@@ -1,0 +1,8 @@
+node_modules
+dist
+*.tsbuildinfo
+.DS_Store
+
+# 参考書のPDF・OCR結果は著作物のためコミットしない
+references/
+*.pdf
