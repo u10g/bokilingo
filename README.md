@@ -14,6 +14,7 @@ npm test           # 問題データ検証・ロジックのテスト
 npm run typecheck
 npm run lint
 npm run build      # dist/ に出力
+python3 -m unittest discover -s tools/pdf   # PDF読み込みツールのテスト
 ```
 
 ## 構成
@@ -24,6 +25,7 @@ npm run build      # dist/ に出力
 | `src/domain/` | 型定義、採点などの問題形式ヘルパー、進捗ルール |
 | `src/screens/`, `src/components/` | 画面とUIパーツ |
 | `src/storage.ts` | 進捗の保存（localStorage） |
+| `tools/pdf/` | 参考書のsearchable PDFから問題を抽出するツール（[手順](docs/reference-workflow.md)） |
 
 問題形式を追加するときは `src/domain/types.ts` の `Question` に型を足す。`questions.ts` と `QuestionRenderer.tsx` の分岐漏れは型エラーで検出される。
 

@@ -20,3 +20,5 @@ jobs:
       # 問題データの検証（貸借一致・選択肢・採点など）を含む
       - run: npm test
       - run: npm run build
+      # 参考書PDFの読み込みツール（tools/pdf）の単体テスト
+      - run: python3 -m unittest discover -s tools/pdf

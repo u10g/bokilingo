@@ -6,3 +6,4 @@ dist
 # 参考書のPDF・OCR結果は著作物のためコミットしない
 references/
 *.pdf
+__pycache__/
