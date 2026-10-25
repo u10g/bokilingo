@@ -1,4 +1,5 @@
-import type { ChapterInfo, LessonNode } from "../domain/types.ts";
+import type { ChapterInfo } from "../../domain/types.ts";
+import type { LegacyNode } from "./types.ts";
 
 /* ---------------------------------------------------------
    コース2: TAC出版準拠コース（教科書の章立て）
@@ -9,7 +10,7 @@ export const TAC_CHAPTERS: Record<string, ChapterInfo> = {
   ch2: { title: "CHAPTER 02", subtitle: "商品売買", bg: "bg-violet-500", sub: "text-violet-100" },
 };
 
-export const TAC_NODES: LessonNode[] = [
+export const TAC_NODES: LegacyNode[] = [
   {
     id: "t1", title: "簿記の基礎（5要素）", kind: "concept", chapter: "ch1",
     desc: "資産・負債・純資産・収益・費用を分類します。",

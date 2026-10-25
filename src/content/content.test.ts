@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest";
 import { ACCOUNTS } from "../domain/constants.ts";
 import { emptyAnswer, gradeAnswer, isAnswerReady, journalSlots, tokenId } from "../domain/questions.ts";
 import type { JournalBlankQuestion, Question } from "../domain/types.ts";
+import { CLASSIFY_LESSON_MAX, JOURNAL_LESSON_MAX } from "../domain/course.ts";
+import { BANK } from "./bank.ts";
 import { COURSES } from "./courses.ts";
+import { LEGACY_COURSES } from "./legacy/index.ts";
+import { TOPICS } from "./topics.ts";
 
 /* ---------------------------------------------------------
    問題データの検証
    設計書「検証済みの項目」を自動化したもの。問題を追加・修正したら必ず通す。
+   問題の中身は、出題しない旧コースの分も含めて全問を検証する。
 --------------------------------------------------------- */
 
-const allQuestions: { courseId: string; nodeId: string; q: Question }[] = COURSES.flatMap((c) =>
+const allQuestions: { courseId: string; nodeId: string; q: Question }[] = LEGACY_COURSES.flatMap((c) =>
   c.nodes.flatMap((n) => n.questions.map((q) => ({ courseId: c.id, nodeId: n.id, q }))),
 );
 const byFormat = <F extends Question["format"]>(f: F) =>
@@ -17,30 +22,60 @@ const byFormat = <F extends Question["format"]>(f: F) =>
 
 const dupes = (xs: string[]) => xs.filter((x, i) => xs.indexOf(x) !== i);
 
-describe("コース構成", () => {
-  it("コースIDに重複がない", () => {
-    expect(dupes(COURSES.map((c) => c.id))).toEqual([]);
-  });
-
-  it("レッスンIDに重複がない", () => {
-    expect(dupes(COURSES.flatMap((c) => c.nodes.map((n) => n.id)))).toEqual([]);
-  });
-
+describe("問題バンク", () => {
   it("問題IDに重複がない", () => {
     expect(dupes(allQuestions.map((x) => x.q.id))).toEqual([]);
   });
 
-  it.each(COURSES.map((c) => [c.id, c] as const))("%s: 全レッスンに問題があり、章が定義されている", (_, c) => {
-    for (const n of c.nodes) {
-      expect(n.questions.length, n.id).toBeGreaterThan(0);
-      expect(c.chapters[n.chapter], `${n.id} の章 ${n.chapter}`).toBeDefined();
-    }
+  it("出題する問題は5要素分類か仕訳穴埋めだけ", () => {
+    const formats = new Set(BANK.map((e) => e.question.format));
+    expect([...formats].sort()).toEqual(["classify", "journalBlank"]);
   });
 
-  it("同じ章のレッスンは連続して並んでいる（章バナーが二重に出ない）", () => {
-    for (const c of COURSES) {
-      const order = c.nodes.map((n) => n.chapter).filter((ch, i, arr) => i === 0 || arr[i - 1] !== ch);
-      expect(dupes(order), c.id).toEqual([]);
+  it("すべての論点に問題がある", () => {
+    const used = new Set(BANK.map((e) => e.topicId));
+    expect(Object.keys(TOPICS).filter((t) => !used.has(t))).toEqual([]);
+  });
+});
+
+describe("コース構成", () => {
+  it("コースIDとレッスンIDに重複がない", () => {
+    expect(dupes(COURSES.map((c) => c.id))).toEqual([]);
+    expect(dupes(COURSES.flatMap((c) => c.nodes.map((n) => n.id)))).toEqual([]);
+  });
+
+  it.each(COURSES.map((c) => [c.id, c] as const))("%s: すべての論点をちょうど1回ずつ扱う", (_, c) => {
+    const units = c.nodes.filter((n) => n.kind !== "review").map((n) => `${n.chapter}/${n.unit}`);
+    const topicsInCourse = [...new Set(units)].map((u) => u.split("/")[1]);
+    expect(dupes(topicsInCourse)).toEqual([]);
+    expect(topicsInCourse.sort()).toEqual(Object.values(TOPICS).map((t) => t.title).sort());
+  });
+
+  it.each(COURSES.map((c) => [c.id, c] as const))("%s: 問題バンクの全問がどこかで出題される", (_, c) => {
+    const inCourse = new Set(c.nodes.flatMap((n) => n.questions.map((q) => q.id)));
+    expect(BANK.map((e) => e.question.id).filter((id) => !inCourse.has(id))).toEqual([]);
+  });
+
+  it.each(COURSES.map((c) => [c.id, c] as const))("%s: セクションの構成（分類→仕訳→復習）", (_, c) => {
+    const sections = c.nodes.map((n) => n.chapter).filter((ch, i, arr) => i === 0 || arr[i - 1] !== ch);
+    // 同じセクションのレッスンは連続して並ぶ（見出しが二重に出ない）
+    expect(dupes(sections)).toEqual([]);
+    for (const sec of sections) {
+      expect(c.chapters[sec], sec).toBeDefined();
+      const nodes = c.nodes.filter((n) => n.chapter === sec);
+      expect(nodes.at(-1)?.kind, `${sec} の最後は復習`).toBe("review");
+      expect(nodes.filter((n) => n.kind === "review")).toHaveLength(1);
+    }
+    for (const n of c.nodes) {
+      expect(n.questions.length, n.id).toBeGreaterThan(0);
+      if (n.kind === "classify") {
+        expect(n.questions.every((q) => q.format === "classify"), n.id).toBe(true);
+        expect(n.questions.length, n.id).toBeLessThanOrEqual(CLASSIFY_LESSON_MAX);
+      }
+      if (n.kind === "journal") {
+        expect(n.questions.every((q) => q.format === "journalBlank"), n.id).toBe(true);
+        expect(n.questions.length, n.id).toBeLessThanOrEqual(JOURNAL_LESSON_MAX);
+      }
     }
   });
 });

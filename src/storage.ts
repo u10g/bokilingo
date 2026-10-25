@@ -8,7 +8,8 @@ import { serializeProgress, type ProgressSnapshot, type SavedProgress } from "./
    読み書きの失敗は握りつぶし、メモリ上での動作を継続する。
 --------------------------------------------------------- */
 
-export const STORAGE_KEY = "boki-quest-progress-v1";
+// v2: コース構造の変更に伴い、クリア済みをレッスンIDで持つ形式に変えた。v1 の進捗は引き継がない
+export const STORAGE_KEY = "boki-quest-progress-v2";
 
 export async function loadProgress(): Promise<SavedProgress | null> {
   try {

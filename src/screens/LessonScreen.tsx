@@ -3,7 +3,7 @@ import { Heart, X } from "lucide-react";
 import { QuestionRenderer } from "../components/QuestionRenderer.tsx";
 import { PRAISE } from "../domain/constants.ts";
 import { emptyAnswer, gradeAnswer, isAnswerReady, shuffled } from "../domain/questions.ts";
-import type { Answer, LessonNode, LessonResult, Question } from "../domain/types.ts";
+import type { Answer, LessonResult, Question } from "../domain/types.ts";
 import { AnswerFooter } from "./AnswerFooter.tsx";
 
 /* ---------------------------------------------------------
@@ -12,19 +12,19 @@ import { AnswerFooter } from "./AnswerFooter.tsx";
 --------------------------------------------------------- */
 
 export function LessonScreen({
-  node,
+  questions,
   hearts,
   onWrongAnswer,
   onExit,
   onComplete,
 }: {
-  node: LessonNode;
+  questions: Question[]; // 出題する問題。セクション復習では候補から選んだ一部
   hearts: number;
   onWrongAnswer: (q: Question) => void;
   onExit: () => void;
   onComplete: (result: LessonResult) => void;
 }) {
-  const [queue, setQueue] = useState<Question[]>(() => shuffled(node.questions));
+  const [queue, setQueue] = useState<Question[]>(() => shuffled(questions));
   const [answer, setAnswer] = useState<Answer>(() => emptyAnswer(queue[0]));
   const [checked, setChecked] = useState(false);
   const [correct, setCorrect] = useState(false);
@@ -35,7 +35,7 @@ export function LessonScreen({
   // 同じ問題が再出題されても入力欄を作り直すための通し番号
   const [turn, setTurn] = useState(0);
 
-  const total = node.questions.length;
+  const total = questions.length;
   const current = queue[0];
   const progress = Math.round((masteredIds.size / total) * 100);
   const started = masteredIds.size > 0 || missedIds.size > 0 || checked;

@@ -18,7 +18,7 @@ export function MapScreen({
   onCloseSheet,
 }: {
   course: Course;
-  completedSet: Set<number>;
+  completedSet: Set<string>;
   frontier: number;
   sheetIndex: number | null;
   onTapNode: (i: number) => void;
@@ -33,25 +33,25 @@ export function MapScreen({
     currentRef.current?.scrollIntoView({ block: "center", behavior: "auto" });
   }, []);
 
-  // 章ごとの進捗を先に集計する
+  // セクションごとの進捗を先に集計する
   const chapterStats: Record<string, { done: number; total: number }> = {};
-  nodes.forEach((n, i) => {
+  nodes.forEach((n) => {
     chapterStats[n.chapter] ??= { done: 0, total: 0 };
     chapterStats[n.chapter].total += 1;
-    if (completedSet.has(i)) chapterStats[n.chapter].done += 1;
+    if (completedSet.has(n.id)) chapterStats[n.chapter].done += 1;
   });
 
   return (
     <div className="px-6 pt-6 pb-16 flex flex-col items-center">
       {nodes.map((node, i) => {
-        const state = getNodeState(i, completedSet, frontier);
+        const state = getNodeState(nodes, i, completedSet, frontier);
         const prev = nodes[i - 1];
         const isNewChapter = !prev || node.chapter !== prev.chapter;
         const isNewUnit = !prev || node.unit !== prev.unit;
         return (
           <Fragment key={node.id}>
             {isNewChapter && <SectionBanner info={chapters[node.chapter]} stats={chapterStats[node.chapter]} />}
-            {!isNewChapter && isNewUnit && node.unit && <UnitDivider label={node.unit} />}
+            {(isNewChapter || isNewUnit) && node.unit && <UnitDivider label={node.unit} />}
             <div ref={state === "current" ? currentRef : null} className="flex flex-col items-center">
               <PathNode node={node} index={i} state={state} onTap={onTapNode} />
             </div>
@@ -66,7 +66,7 @@ export function MapScreen({
       {sheetIndex !== null && (
         <NodeSheet
           node={nodes[sheetIndex]}
-          state={getNodeState(sheetIndex, completedSet, frontier)}
+          state={getNodeState(nodes, sheetIndex, completedSet, frontier)}
           onStart={() => onStart(sheetIndex)}
           onClose={onCloseSheet}
         />

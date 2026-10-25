@@ -88,9 +88,10 @@ export function SectionBanner({ info, stats }: { info: ChapterInfo; stats?: { do
   );
 }
 
+// 下側は「スタート」の吹き出しが区切り線に重ならないだけ空ける
 export function UnitDivider({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 w-full my-3">
+    <div className="flex items-center gap-3 w-full mt-3 mb-11">
       <div className="flex-1 h-px bg-gray-200" />
       <span className="text-xs font-extrabold text-gray-400 uppercase tracking-wide">{label}</span>
       <div className="flex-1 h-px bg-gray-200" />
@@ -102,8 +103,8 @@ function NodeIcon({ kind, state }: { kind: NodeKind; state: NodeState }) {
   const cls = "w-7 h-7";
   if (state === "locked") return <Lock className={cls} />;
   if (state === "completed") return <Star className={`${cls} fill-white`} />;
-  if (kind === "training") return <Dumbbell className={cls} />;
-  if (kind === "checkpoint") return <Trophy className={cls} />;
+  if (kind === "journal") return <Dumbbell className={cls} />;
+  if (kind === "review") return <Trophy className={cls} />;
   return <BookOpen className={cls} />;
 }
 
@@ -141,11 +142,11 @@ export function PathNode({ node, index, state, onTap }: { node: LessonNode; inde
   );
 }
 
-const KIND_LABEL: Record<NodeKind, string> = { concept: "たんご", training: "トレーニング", checkpoint: "チェックポイント" };
+const KIND_LABEL: Record<NodeKind, string> = { classify: "5要素分類", journal: "仕訳穴埋め", review: "セクション復習" };
 const KIND_COLOR: Record<NodeKind, string> = {
-  concept: "text-green-600 bg-green-50",
-  training: "text-sky-600 bg-sky-50",
-  checkpoint: "text-amber-600 bg-amber-50",
+  classify: "text-green-600 bg-green-50",
+  journal: "text-sky-600 bg-sky-50",
+  review: "text-amber-600 bg-amber-50",
 };
 
 export function NodeSheet({ node, state, onStart, onClose }: { node: LessonNode; state: NodeState; onStart: () => void; onClose: () => void }) {
@@ -159,6 +160,7 @@ export function NodeSheet({ node, state, onStart, onClose }: { node: LessonNode;
             <X className="w-5 h-5" />
           </button>
         </div>
+        {node.unit && node.kind !== "review" && <p className="text-xs font-bold text-gray-400">{node.unit}</p>}
         <p className="text-lg font-extrabold text-gray-800">{node.title}</p>
         <p className="text-sm text-gray-500 mt-1 mb-5">{node.desc}</p>
 

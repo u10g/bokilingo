@@ -1,4 +1,5 @@
-import type { ChapterInfo, LessonNode } from "../domain/types.ts";
+import type { ChapterInfo } from "../../domain/types.ts";
+import type { LegacyNode } from "./types.ts";
 
 /* ---------------------------------------------------------
    コース1: 仕訳穴埋めコース
@@ -17,7 +18,7 @@ export const JOURNAL_BLANK_CHAPTERS: Record<string, ChapterInfo> = {
   jbG: { title: "CHAPTER G", subtitle: "決算で整理する", bg: "bg-rose-500", sub: "text-rose-100" },
 };
 
-export const JOURNAL_BLANK_NODES: LessonNode[] = [
+export const JOURNAL_BLANK_NODES: LegacyNode[] = [
   /* ===== CHAPTER A: 商品を仕入れて売る ===== */
   {
     id: "jb1", title: "商品売買の仕訳", kind: "concept", chapter: "jbA",
