@@ -54,12 +54,32 @@ export interface JournalBlankQuestion extends QuestionBase {
   choices: string[];
 }
 
+// 複数選択。例：取引が記入される補助簿をすべて選ぶ
+export interface MultiSelectQuestion extends QuestionBase {
+  format: "multiSelect";
+  options: string[];
+  answers: string[]; // 正解（1つ以上）
+}
+
+// 表の空欄に語群から語・数値を入れる。例：商品有高帳、財務諸表
+export type TableCell = string | { blank: string };
+
+export interface TableBlankQuestion extends QuestionBase {
+  format: "tableBlank";
+  caption: string; // 表の見出し（「商品有高帳（移動平均法）」など）
+  columns: string[];
+  rows: TableCell[][];
+  choices: string[];
+}
+
 export type Question =
   | ClassifyQuestion
   | TwoChoiceQuestion
   | FillBlankQuestion
   | JournalQuestion
-  | JournalBlankQuestion;
+  | JournalBlankQuestion
+  | MultiSelectQuestion
+  | TableBlankQuestion;
 
 export type Format = Question["format"];
 
@@ -71,15 +91,17 @@ export interface JournalAnswer {
   creditAmount: string;
 }
 
+// 仕訳穴埋め・表の穴埋めで共通の回答
 export interface JournalBlankAnswer {
-  // セルのキー（d0, c1 など）→ 置いたトークンのID
+  // セルのキー（d0, c1, r2c3 など）→ 置いたトークンのID
   slots: Record<string, string>;
 }
 
-export type Answer = string | null | JournalAnswer | JournalBlankAnswer;
+export type Answer = string | null | string[] | JournalAnswer | JournalBlankAnswer;
 
-// classify: 5要素分類 / journal: 仕訳穴埋め / review: セクション復習（合格判定あり）
-export type NodeKind = "classify" | "journal" | "review";
+// classify: 5要素分類 / journal: 仕訳穴埋め / table: 帳簿・表（複数選択・表の穴埋め）
+// review: セクション復習（合格判定あり）
+export type NodeKind = "classify" | "journal" | "table" | "review";
 
 export interface LessonNode {
   id: string;

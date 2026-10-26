@@ -9,40 +9,48 @@ import { TOPICS } from "./topics.ts";
    どちらも同じ問題バンクを使い、論点の並べ方だけが異なる。
    進捗はコースごとに独立する。先頭のコースを標準コースとして扱う。
 
-   並び順は暫定。参考書の分析（docs/topic-map.md）ができたら差し替える。
+   並びの根拠は docs/topic-map.md。
 --------------------------------------------------------- */
 
+// TAC出版「簿記の教科書 日商3級」の章順（docs/topic-map.md）。
+// 問題がまだない章（01 簿記の基礎、08 試算表、10 決算手続I）は、論点を追加したら差し込む
 const TAC: CourseDef = {
   id: "tac",
   title: "TAC順コース",
   subtitle: "教科書の章の順番で学ぶ",
-  stubNote: "章の並びは暫定です（参考書の分析後に確定）",
+  stubNote: "簿記の基礎・試算表・精算表の章は準備中",
   sections: [
-    { id: "s1", title: "SECTION 1", subtitle: "商品売買", bg: "bg-emerald-500", sub: "text-emerald-100", topicIds: ["sales-basic", "sales-extra"] },
-    { id: "s2", title: "SECTION 2", subtitle: "現金と預金", bg: "bg-sky-500", sub: "text-sky-100", topicIds: ["cash-deposit", "cash-short"] },
-    { id: "s3", title: "SECTION 3", subtitle: "債権と債務", bg: "bg-indigo-500", sub: "text-indigo-100", topicIds: ["notes", "loans"] },
-    { id: "s4", title: "SECTION 4", subtitle: "従業員と仮勘定", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["payroll", "suspense"] },
-    { id: "s5", title: "SECTION 5", subtitle: "経費と賃借", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["expenses", "rent", "services"] },
-    { id: "s6", title: "SECTION 6", subtitle: "固定資産", bg: "bg-amber-600", sub: "text-amber-100", topicIds: ["fixed-assets", "depreciation"] },
-    { id: "s7", title: "SECTION 7", subtitle: "株式会社と税金", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["equity", "consumption-tax", "corporate-tax"] },
-    { id: "s8", title: "SECTION 8", subtitle: "決算", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["bad-debts", "accruals", "closing"] },
+    { id: "s1", title: "CHAPTER 02", subtitle: "商品売買", bg: "bg-emerald-500", sub: "text-emerald-100", topicIds: ["sales-basic", "sales-extra"] },
+    { id: "s2", title: "CHAPTER 03", subtitle: "現金預金", bg: "bg-sky-500", sub: "text-sky-100", topicIds: ["cash-deposit", "cash-short"] },
+    { id: "s3", title: "CHAPTER 04", subtitle: "手形と電子記録債権（債務）", bg: "bg-indigo-500", sub: "text-indigo-100", topicIds: ["notes"] },
+    { id: "s4", title: "CHAPTER 05", subtitle: "有形固定資産", bg: "bg-amber-600", sub: "text-amber-100", topicIds: ["fixed-assets"] },
+    { id: "s5", title: "CHAPTER 06 前半", subtitle: "その他の取引（債権債務・仮勘定・給料・賃借）", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["loans", "suspense", "payroll", "rent"] },
+    { id: "s6", title: "CHAPTER 06 後半", subtitle: "その他の取引（収益・費用・消費税・株式・訂正）", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["services", "expenses", "consumption-tax", "equity", "correction"] },
+    { id: "s-ch07", title: "CHAPTER 07", subtitle: "帳簿", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["subledger", "inventory-ledger"] },
+    { id: "s-ch09", title: "CHAPTER 09", subtitle: "伝票と仕訳日計表", bg: "bg-cyan-600", sub: "text-cyan-100", topicIds: ["slips"] },
+    { id: "s7", title: "CHAPTER 11 前半", subtitle: "決算手続II（振替・貸倒れ・減価償却）", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts", "depreciation"] },
+    { id: "s8", title: "CHAPTER 11 後半", subtitle: "決算手続II（経過勘定・法人税等）", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["accruals", "corporate-tax"] },
+    { id: "s-ch12", title: "CHAPTER 12", subtitle: "決算手続III（財務諸表）", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["statements"] },
   ],
 };
 
+// 第1問の出題数（docs/topic-map.md、本試験問題集4回分）の多い論点から並べる。
+// 決算系の論点は第1問での出題が少なく、第2問・第3問で必ず問われるため後半に置く
 const EXAM: CourseDef = {
   id: "exam",
   title: "本試験頻度順コース",
   subtitle: "第1問の頻出論点から、第2問・第3問へ",
-  stubNote: "頻度の並びは暫定です（本試験の分析後に確定）",
+  stubNote: "並び順は本試験問題集4回分の出題数にもとづく（回を追加したら更新）",
   sections: [
-    { id: "e1", title: "第1問 頻出 1", subtitle: "商品売買", bg: "bg-emerald-500", sub: "text-emerald-100", topicIds: ["sales-basic", "sales-extra"] },
-    { id: "e2", title: "第1問 頻出 2", subtitle: "固定資産と株式", bg: "bg-amber-600", sub: "text-amber-100", topicIds: ["fixed-assets", "equity"] },
-    { id: "e3", title: "第1問 頻出 3", subtitle: "債権と債務", bg: "bg-indigo-500", sub: "text-indigo-100", topicIds: ["notes", "loans"] },
-    { id: "e4", title: "第1問 頻出 4", subtitle: "現金・預金と仮勘定", bg: "bg-sky-500", sub: "text-sky-100", topicIds: ["cash-deposit", "cash-short", "suspense"] },
-    { id: "e5", title: "第1問 頻出 5", subtitle: "給料と税金", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["payroll", "consumption-tax", "corporate-tax"] },
-    { id: "e6", title: "第1問 頻出 6", subtitle: "経費と賃借", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["expenses", "rent", "services"] },
-    { id: "e7", title: "第2問・第3問 1", subtitle: "決算整理（償却と引当）", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["depreciation", "bad-debts"] },
-    { id: "e8", title: "第2問・第3問 2", subtitle: "決算整理（経過勘定と売上原価）", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["accruals", "closing"] },
+    { id: "e1", title: "第1問 頻出 1", subtitle: "商品売買", bg: "bg-emerald-500", sub: "text-emerald-100", topicIds: ["sales-extra", "sales-basic"] },
+    { id: "e2", title: "第1問 頻出 2", subtitle: "現金・預金と仮勘定", bg: "bg-sky-500", sub: "text-sky-100", topicIds: ["cash-deposit", "suspense", "cash-short"] },
+    { id: "e3", title: "第1問 頻出 3", subtitle: "経費・給料・賃借", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["expenses", "payroll", "rent", "services"] },
+    { id: "e4", title: "第1問 頻出 4", subtitle: "固定資産と債権・債務", bg: "bg-amber-600", sub: "text-amber-100", topicIds: ["fixed-assets", "loans", "notes"] },
+    { id: "e5", title: "第1問 頻出 5", subtitle: "税金と株式", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["consumption-tax", "corporate-tax", "equity"] },
+    { id: "e5b", title: "第1問 その他", subtitle: "訂正仕訳と伝票", bg: "bg-cyan-600", sub: "text-cyan-100", topicIds: ["correction", "slips"] },
+    { id: "e6", title: "第2問・第3問 1", subtitle: "決算の振替と貸倒れ", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts"] },
+    { id: "e7", title: "第2問・第3問 2", subtitle: "減価償却と経過勘定", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["depreciation", "accruals"] },
+    { id: "e8", title: "第2問 帳簿と財務諸表", subtitle: "補助簿・商品有高帳・財務諸表", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["subledger", "inventory-ledger", "statements"] },
   ],
 };
 

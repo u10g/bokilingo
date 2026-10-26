@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ACCOUNTS } from "../domain/constants.ts";
-import { emptyAnswer, gradeAnswer, isAnswerReady, journalSlots, tokenId } from "../domain/questions.ts";
+import { emptyAnswer, gradeAnswer, isAnswerReady, journalSlots, tableSlots, tokenId } from "../domain/questions.ts";
 import type { JournalBlankQuestion, Question } from "../domain/types.ts";
-import { CLASSIFY_LESSON_MAX, JOURNAL_LESSON_MAX } from "../domain/course.ts";
+import { CLASSIFY_LESSON_MAX, JOURNAL_LESSON_MAX, TABLE_LESSON_MAX } from "../domain/course.ts";
 import { BANK } from "./bank.ts";
 import { COURSES } from "./courses.ts";
 import { LEGACY_COURSES } from "./legacy/index.ts";
@@ -14,9 +14,10 @@ import { TOPICS } from "./topics.ts";
    問題の中身は、出題しない旧コースの分も含めて全問を検証する。
 --------------------------------------------------------- */
 
-const allQuestions: { courseId: string; nodeId: string; q: Question }[] = LEGACY_COURSES.flatMap((c) =>
-  c.nodes.flatMap((n) => n.questions.map((q) => ({ courseId: c.id, nodeId: n.id, q }))),
-);
+// 旧コースの全問（出題しないものを含む）と、問題バンクで追加した問題
+const legacyQuestions: Question[] = LEGACY_COURSES.flatMap((c) => c.nodes.flatMap((n) => n.questions));
+const legacyIds = new Set(legacyQuestions.map((q) => q.id));
+const allQuestions: { q: Question }[] = [...legacyQuestions, ...BANK.map((e) => e.question).filter((q) => !legacyIds.has(q.id))].map((q) => ({ q }));
 const byFormat = <F extends Question["format"]>(f: F) =>
   allQuestions.map((x) => x.q).filter((q): q is Extract<Question, { format: F }> => q.format === f);
 
@@ -27,9 +28,9 @@ describe("問題バンク", () => {
     expect(dupes(allQuestions.map((x) => x.q.id))).toEqual([]);
   });
 
-  it("出題する問題は5要素分類か仕訳穴埋めだけ", () => {
+  it("出題するのは 5要素分類・仕訳穴埋め・複数選択・表の穴埋め だけ", () => {
     const formats = new Set(BANK.map((e) => e.question.format));
-    expect([...formats].sort()).toEqual(["classify", "journalBlank"]);
+    expect([...formats].sort()).toEqual(["classify", "journalBlank", "multiSelect", "tableBlank"]);
   });
 
   it("すべての論点に問題がある", () => {
@@ -75,6 +76,10 @@ describe("コース構成", () => {
       if (n.kind === "journal") {
         expect(n.questions.every((q) => q.format === "journalBlank"), n.id).toBe(true);
         expect(n.questions.length, n.id).toBeLessThanOrEqual(JOURNAL_LESSON_MAX);
+      }
+      if (n.kind === "table") {
+        expect(n.questions.every((q) => q.format === "multiSelect" || q.format === "tableBlank"), n.id).toBe(true);
+        expect(n.questions.length, n.id).toBeLessThanOrEqual(TABLE_LESSON_MAX);
       }
     }
   });
@@ -159,6 +164,48 @@ describe("仕訳穴埋め（journalBlank）", () => {
     const oneWrong = { slots: { ...right.slots, [slots[0].key]: tokenId(q, wrongIdx) } };
     expect(gradeAnswer(q, oneWrong)).toBe(false);
 
+    expect(isAnswerReady(q, emptyAnswer(q))).toBe(false);
+  });
+});
+
+describe("複数選択（multiSelect）", () => {
+  it.each(byFormat("multiSelect").map((q) => [q.id, q] as const))("%s", (_, q) => {
+    expect(q.answers.length).toBeGreaterThan(0);
+    expect(dupes(q.options)).toEqual([]);
+    for (const a of q.answers) expect(q.options).toContain(a);
+    expect(isAnswerReady(q, emptyAnswer(q))).toBe(false);
+    expect(gradeAnswer(q, [...q.answers].reverse())).toBe(true);
+    // 1つ足りない・1つ多いと不正解
+    if (q.answers.length > 1) expect(gradeAnswer(q, q.answers.slice(1))).toBe(false);
+    const extra = q.options.find((o) => !q.answers.includes(o));
+    if (extra) expect(gradeAnswer(q, [...q.answers, extra])).toBe(false);
+  });
+});
+
+describe("表の穴埋め（tableBlank）", () => {
+  const num = (s: string) => Number(s.replace(/,/g, ""));
+
+  it.each(byFormat("tableBlank").map((q) => [q.id, q] as const))("%s", (_, q) => {
+    const slots = tableSlots(q);
+    expect(slots.length).toBeGreaterThan(0);
+    for (const row of q.rows) expect(row).toHaveLength(q.columns.length);
+    for (const s of slots) expect(q.choices).toContain(s.answer);
+    expect(dupes(q.choices)).toEqual([]);
+
+    // 数量×単価＝金額 の表は、空欄を正解で埋めたうえで計算が合うか確かめる
+    const [iq, iu, ia] = ["数量", "単価", "金額"].map((c) => q.columns.indexOf(c));
+    if (iq >= 0 && iu >= 0 && ia >= 0) {
+      for (const row of q.rows) {
+        const v = (c: (typeof row)[number]) => num(typeof c === "string" ? c : c.blank);
+        expect(v(row[iq]) * v(row[iu]), JSON.stringify(row)).toBe(v(row[ia]));
+      }
+    }
+
+    const right = { slots: Object.fromEntries(slots.map((s) => [s.key, tokenId(q, q.choices.indexOf(s.answer))])) };
+    expect(isAnswerReady(q, right)).toBe(true);
+    expect(gradeAnswer(q, right)).toBe(true);
+    const wrongIdx = q.choices.findIndex((c) => c !== slots[0].answer);
+    expect(gradeAnswer(q, { slots: { ...right.slots, [slots[0].key]: tokenId(q, wrongIdx) } })).toBe(false);
     expect(isAnswerReady(q, emptyAnswer(q))).toBe(false);
   });
 });

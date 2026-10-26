@@ -1,4 +1,4 @@
-import type { Answer, JournalAnswer, JournalBlankAnswer, JournalBlankQuestion, Question } from "./types.ts";
+import type { Answer, JournalAnswer, JournalBlankAnswer, JournalBlankQuestion, Question, TableBlankQuestion } from "./types.ts";
 
 /* ---------------------------------------------------------
    問題形式ごとのヘルパー
@@ -40,12 +40,25 @@ export function journalSlots(q: JournalBlankQuestion): JournalSlot[] {
   return slots;
 }
 
-// 選択肢トークンのID。同じ科目名が複数あっても区別できるよう index を含める
-export function tokenId(q: JournalBlankQuestion, index: number): string {
+// 表の空欄を、上の行・左の列から順に返す
+export function tableSlots(q: TableBlankQuestion): JournalSlot[] {
+  const slots: JournalSlot[] = [];
+  q.rows.forEach((row, ri) =>
+    row.forEach((cell, ci) => {
+      if (typeof cell !== "string") slots.push({ key: `r${ri}c${ci}`, answer: cell.blank });
+    }),
+  );
+  return slots;
+}
+
+type WithChoices = { id: string; choices: string[] };
+
+// 選択肢トークンのID。同じ語が複数あっても区別できるよう index を含める
+export function tokenId(q: WithChoices, index: number): string {
   return `${q.id}::c${index}`;
 }
 
-function tokenLabel(q: JournalBlankQuestion, id: string): string | undefined {
+function tokenLabel(q: WithChoices, id: string): string | undefined {
   const idx = Number(id.split("::c")[1]);
   return q.choices[idx];
 }
@@ -55,7 +68,10 @@ export function emptyAnswer(q: Question): Answer {
     case "journal":
       return { debitAccount: "", debitAmount: "", creditAccount: "", creditAmount: "" };
     case "journalBlank":
+    case "tableBlank":
       return { slots: {} };
+    case "multiSelect":
+      return [];
     case "classify":
     case "twochoice":
     case "fillblank":
@@ -75,6 +91,12 @@ export function isAnswerReady(q: Question, answer: Answer): boolean {
       const a = answer as JournalBlankAnswer;
       return journalSlots(q).every((s) => Boolean(a.slots[s.key]));
     }
+    case "tableBlank": {
+      const a = answer as JournalBlankAnswer;
+      return tableSlots(q).every((s) => Boolean(a.slots[s.key]));
+    }
+    case "multiSelect":
+      return (answer as string[]).length > 0;
     case "classify":
     case "twochoice":
     case "fillblank":
@@ -103,6 +125,17 @@ export function gradeAnswer(q: Question, answer: Answer): boolean {
         return Boolean(id) && tokenLabel(q, id) === s.answer;
       });
     }
+    case "tableBlank": {
+      const a = answer as JournalBlankAnswer;
+      return tableSlots(q).every((s) => {
+        const id = a.slots[s.key];
+        return Boolean(id) && tokenLabel(q, id) === s.answer;
+      });
+    }
+    case "multiSelect": {
+      const picked = new Set(answer as string[]);
+      return picked.size === q.answers.length && q.answers.every((x) => picked.has(x));
+    }
     case "classify":
     case "twochoice":
     case "fillblank":
@@ -124,6 +157,12 @@ export function correctAnswerText(q: Question): string {
           return `${d} ／ ${c}`;
         })
         .join("、");
+    case "tableBlank":
+      return tableSlots(q)
+        .map((s) => s.answer)
+        .join("、");
+    case "multiSelect":
+      return q.answers.join("・");
     case "classify":
     case "twochoice":
     case "fillblank":

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BookOpen, ChevronDown, Dumbbell, Flame, Gem, Heart, Lock, Star, Trophy, X } from "lucide-react";
+import { BookOpen, ChevronDown, Dumbbell, Flame, Gem, Heart, Lock, Star, Table2, Trophy, X } from "lucide-react";
 import type { NodeState } from "../domain/progress.ts";
 import type { ChapterInfo, LessonNode, NodeKind } from "../domain/types.ts";
 
@@ -104,6 +104,7 @@ function NodeIcon({ kind, state }: { kind: NodeKind; state: NodeState }) {
   if (state === "locked") return <Lock className={cls} />;
   if (state === "completed") return <Star className={`${cls} fill-white`} />;
   if (kind === "journal") return <Dumbbell className={cls} />;
+  if (kind === "table") return <Table2 className={cls} />;
   if (kind === "review") return <Trophy className={cls} />;
   return <BookOpen className={cls} />;
 }
@@ -142,10 +143,11 @@ export function PathNode({ node, index, state, onTap }: { node: LessonNode; inde
   );
 }
 
-const KIND_LABEL: Record<NodeKind, string> = { classify: "5要素分類", journal: "仕訳穴埋め", review: "セクション復習" };
+const KIND_LABEL: Record<NodeKind, string> = { classify: "5要素分類", journal: "仕訳穴埋め", table: "帳簿・表", review: "セクション復習" };
 const KIND_COLOR: Record<NodeKind, string> = {
   classify: "text-green-600 bg-green-50",
   journal: "text-sky-600 bg-sky-50",
+  table: "text-violet-600 bg-violet-50",
   review: "text-amber-600 bg-amber-50",
 };
 
