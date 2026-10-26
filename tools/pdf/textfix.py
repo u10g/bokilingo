@@ -107,7 +107,10 @@ def leading_marker(s: str) -> str | None:
     return None
 
 
-DAIMON = re.compile(r"(?<![回\d])第\s*[^\d\s回]?\s*([1-5１-５IlⅠⅡⅢ])\s*[問間]|^\s*([1-5１-５IlⅠⅡⅢ])\s*[問間]")
+# 「第1問」の「1」は「［」「|」などに化けることがある（例：「第［問」）。この形は1とみなす
+DAIMON = re.compile(
+    r"(?<![回\d])第\s*[^\d\s回]?\s*([1-5１-５IlⅠⅡⅢ])\s*[問間]|^\s*([1-5１-５IlⅠⅡⅢ])\s*[問間]|(?<![回\d])第\s*([［\[｜|!！])\s*[問間]"
+)
 # 「1.6月に…」は設問番号、「1.320,000」は金額。ピリオドの後に3桁が続くものは除く。
 # 区切りが読み落とされた「9消費税の…」も拾うが、「9月30日」のような日付は除く
 QUESTION_NO = re.compile(
@@ -140,8 +143,17 @@ def match_question_no(line: str, expected: int) -> tuple[int, int] | None:
 
 # 第2問の小問「(1)」「⑴」。⑴ は行頭にゴミが付くことがあるので行内のどこでも拾う
 SUB_NO = re.compile(r"^\s*[(（]\s*([1-3])\s*[)）]|([⑴⑵⑶])")
-CITED_EXAM = re.compile(r"第\s*(\d{2,3})\s*回\s*第\s*(\d)\s*問")
-CITED_SAMPLE = re.compile(r"サンプル問題\s*(\d)")
+# 出典。第1問は「(サンプル問題3-問14)」のように設問まで書かれる（「-」は「一」に化けやすい）
+_CITED_NO = r"(?:\s*[一\-ー－—‐~〜]?\s*問\s*(\d{1,2}))?"
+CITED_EXAM = re.compile(r"第\s*(\d{2,3})\s*回\s*第\s*(\d)\s*問" + _CITED_NO)
+CITED_SAMPLE = re.compile(r"サンプル問題\s*(\d)(?:\s*[一\-ー－—‐]?\s*第\s*\d\s*問)?" + _CITED_NO)
+
+
+def citations(line: str) -> list[str]:
+    """行内の出典表記を「第145回第2問」「サンプル問題3-問14」の形で返す。"""
+    out = [f"第{m.group(1)}回第{m.group(2)}問" + (f"-問{m.group(3)}" if m.group(3) else "") for m in CITED_EXAM.finditer(line)]
+    out += [f"サンプル問題{m.group(1)}" + (f"-問{m.group(2)}" if m.group(2) else "") for m in CITED_SAMPLE.finditer(line)]
+    return out
 
 _ROMAN = {"I": 1, "l": 1, "Ⅰ": 1, "Ⅱ": 2, "Ⅲ": 3}
 
@@ -150,9 +162,9 @@ def daimon_number(s: str) -> int | None:
     m = DAIMON.search(s)
     if not m:
         return None
-    c = m.group(1) or m.group(2)
-    if c in _ROMAN:
-        return _ROMAN[c]
+    c = m.group(1) or m.group(2)  # group(3) は化けた「1」
+    if c is None or c in _ROMAN:
+        return _ROMAN.get(c, 1)
     return int(c.translate(str.maketrans("１２３４５", "12345")))
 
 
@@ -216,17 +228,12 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
                 flush()
                 # 大問番号が戻ったら解答・解説のページに入ったとみなし、そこで打ち切る
                 if daimon is not None and d < daimon:
-                    spread_citations(out)
-                    return out
+                    return _finish(out)
                 daimon, expected_no, expected_sub = d, 1, 1
                 cur = Question(daimon, None, page_no)  # 大問の柱書き
                 cur.lines.append(line[DAIMON.search(line).end():])
                 continue
 
-            # 「(第145回第2問)」のような出典表記は、直前までの問題に付ける
-            if cur:
-                cur.cited += [f"第{m.group(1)}回第{m.group(2)}問" for m in CITED_EXAM.finditer(line)]
-                cur.cited += [f"サンプル問題{m.group(1)}" for m in CITED_SAMPLE.finditer(line)]
 
             sm = SUB_NO.search(line)
             sub = (int(sm.group(1)) if sm.group(1) else "⑴⑵⑶".index(sm.group(2)) + 1) if sm else None
@@ -253,6 +260,10 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
             if cur is None:
                 cur = Question(daimon, None, page_no)
 
+            # 「(第145回第2問)」のような出典表記は、問題の末尾に書かれる。
+            # 設問番号と同じ行にあれば、その設問のもの
+            cur.cited += citations(line)
+
             # 選択肢の行。OCRの読み順が前後することがあるため、行頭の記号から読み始め、
             # 最後に記号順へ並べ直す（leading_marker が None なら選択肢の行ではない）
             start = leading_marker(line)
@@ -265,8 +276,44 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
                 cur.lines.append(line)
             cur.flags.update(line_flags(line))
     flush()
-    spread_citations(out)
-    return out
+    return _finish(out)
+
+
+def _finish(questions: list[Question]) -> list[Question]:
+    # 第1問の見出しが読めず、最初に見つかった見出しが第2問なら、それより前は第1問とみなす
+    first = next((q.daimon for q in questions if q.daimon is not None), None)
+    if first == 2:
+        for q in questions:
+            if q.daimon is None:
+                q.daimon = 1
+    recover_inline(questions)
+    spread_citations(questions)
+    return questions
+
+
+def recover_inline(questions: list[Question]) -> None:
+    """読み落とした設問を、ほかの設問の文中から取り戻す。
+
+    表と本文が入り組んだページでは、「…判明した。3.当座預金勘定の…」のように
+    設問番号が行の途中に来て、前の設問に吸収されることがある。
+    同じ大問・小問の設問の文中に「。3.」があれば、そこから後ろを設問3とする。
+    表の文字が混ざっていることが多いため、recovered の印を付ける。
+    """
+    for q in questions:
+        if "missing" not in q.flags or not q.no:
+            continue
+        pat = re.compile(rf"[。)）]\s*{q.no}\s*[.．,，]\s*(?!\d)")
+        for host in questions:
+            if host is q or host.daimon != q.daimon or host.sub != q.sub or not host.no:
+                continue
+            m = pat.search(host.prompt)
+            if m:
+                text = host.prompt
+                host.lines = [text[: m.start() + 1]]
+                q.lines = [text[m.end() :]]
+                q.page = host.page
+                q.flags = {"recovered"}
+                break
 
 
 def spread_citations(questions: list[Question]) -> None:
@@ -274,6 +321,7 @@ def spread_citations(questions: list[Question]) -> None:
 
     さかのぼる途中で別の出典を持つ設問に当たったら、そこから先はその出典を使う
     （第2問の小問(1)(2)がそれぞれ別の回から出題されている場合）。
+    設問まで書かれた出典（「-問14」付き）は、その設問だけのものなので広げない。
     """
     carry: list[str] = []
     daimon: int | None = None
@@ -281,6 +329,6 @@ def spread_citations(questions: list[Question]) -> None:
         if q.daimon != daimon:
             daimon, carry = q.daimon, []
         if q.cited:
-            carry = q.cited
+            carry = [c for c in q.cited if "-問" not in c]
         else:
             q.cited = list(carry)

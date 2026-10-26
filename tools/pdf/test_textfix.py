@@ -141,6 +141,25 @@ class SplitTest(unittest.TestCase):
         qs = split_questions([["第1問", "1.備品を購入した。", "3.土地を売却した。", "第2問"]])
         self.assertEqual([(q.no, sorted(q.flags)) for q in qs if q.no], [(1, []), (2, ["missing"]), (3, [])])
 
+    def test_inline_question_is_recovered(self):
+        qs = split_questions([["第3問", "1.現金過不足は雑損とする。", "2.貸倒引当金を設定する。表の文字。3.当座借越に振り替える。", "4.減価償却を行う。", "第4問"]])
+        by_no = {q.no: q for q in qs if q.no}
+        self.assertEqual(by_no[3].prompt, "当座借越に振り替える。")
+        self.assertEqual(by_no[3].flags, {"recovered"})
+        self.assertEqual(by_no[2].prompt, "貸倒引当金を設定する。表の文字。")
+
+    def test_first_daimon_inferred(self):
+        # 第1問の見出しが読めず、第2問の見出しは読めた
+        qs = split_questions([["1.備品を購入した。", "2.土地を売却した。", "第2問", "(1)勘定に記入しなさい。"]])
+        self.assertEqual([(q.daimon, q.no) for q in qs if q.no], [(1, 1), (1, 2)])
+
+    def test_garbled_first_heading(self):
+        self.assertEqual(daimon_number("第［問"), 1)
+
+    def test_citation_with_question_number(self):
+        qs = split_questions([["第1問", "1.備品を購入した。", "2.土地を売却した。(サンプル問題3一問14)", "3.現金を引き出した。", "第2問"]])
+        self.assertEqual([q.cited for q in qs if q.no], [[], ["サンプル問題3-問14"], []])
+
     def test_stops_at_answers(self):
         self.assertFalse(any("(イ)" in q.prompt for q in self.qs))
 
