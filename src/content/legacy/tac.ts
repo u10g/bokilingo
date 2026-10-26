@@ -54,8 +54,8 @@ export const TAC_NODES: LegacyNode[] = [
     desc: "借方・貸方をセットで入力する仕訳の練習です。",
     questions: [
       { id: "t4-1", format: "journal", prompt: "現金300,000円を元入れして開業した。", debitAccount: "現金", debitAmount: 300000, creditAccount: "資本金", creditAmount: 300000, explanation: "開業のための出資は資本金として貸方に記入します。" },
-      { id: "t4-2", format: "journal", prompt: "商品50,000円を仕入れ、代金は現金で支払った。", debitAccount: "仕入", debitAmount: 50000, creditAccount: "現金", creditAmount: 50000, explanation: "仕入（費用）の発生は借方、現金の減少は貸方です。" },
-      { id: "t4-3", format: "journal", prompt: "商品80,000円を売り上げ、代金は現金で受け取った。", debitAccount: "現金", debitAmount: 80000, creditAccount: "売上", creditAmount: 80000, explanation: "現金の増加は借方、売上（収益）の発生は貸方です。" },
+      { id: "t4-2", format: "journal", prompt: "商品¥50,000を仕入れ、代金は現金で支払った。", debitAccount: "仕入", debitAmount: 50000, creditAccount: "現金", creditAmount: 50000, explanation: "仕入（費用）の発生は借方、現金の減少は貸方です。" },
+      { id: "t4-3", format: "journal", prompt: "商品¥80,000を売り上げ、代金は現金で受け取った。", debitAccount: "現金", debitAmount: 80000, creditAccount: "売上", creditAmount: 80000, explanation: "現金の増加は借方、売上（収益）の発生は貸方です。" },
       { id: "t4-4", format: "journal", prompt: "銀行から200,000円を借り入れ、現金で受け取った。", debitAccount: "現金", debitAmount: 200000, creditAccount: "借入金", creditAmount: 200000, explanation: "現金の増加は借方、借入金（負債）の増加は貸方です。" },
       { id: "t4-5", format: "journal", prompt: "買掛金30,000円を現金で支払った。", debitAccount: "買掛金", debitAmount: 30000, creditAccount: "現金", creditAmount: 30000, explanation: "買掛金（負債）の減少は借方、現金の減少は貸方です。" },
     ],
@@ -97,8 +97,8 @@ export const TAC_NODES: LegacyNode[] = [
     id: "t8", title: "返品の処理", kind: "concept", chapter: "ch2",
     desc: "仕入戻し・売上戻りの仕訳パターンです。",
     questions: [
-      { id: "t8-1", format: "journal", prompt: "掛けで仕入れた商品5,000円を品違いのため返品した。", debitAccount: "買掛金", debitAmount: 5000, creditAccount: "仕入", creditAmount: 5000, explanation: "仕入戻しは仕入（費用）を取り消すため貸方に記入し、買掛金（負債）も減らします。" },
-      { id: "t8-2", format: "journal", prompt: "掛けで売り上げた商品7,000円が返品された。", debitAccount: "売上", debitAmount: 7000, creditAccount: "売掛金", creditAmount: 7000, explanation: "売上戻りは売上（収益）を取り消すため借方に記入し、売掛金（資産）も減らします。" },
+      { id: "t8-1", format: "journal", prompt: "掛けで仕入れた商品¥5,000を品違いのため返品した。", debitAccount: "買掛金", debitAmount: 5000, creditAccount: "仕入", creditAmount: 5000, explanation: "仕入戻しは仕入（費用）を取り消すため貸方に記入し、買掛金（負債）も減らします。" },
+      { id: "t8-2", format: "journal", prompt: "掛けで売り上げた商品¥7,000が返品された。", debitAccount: "売上", debitAmount: 7000, creditAccount: "売掛金", creditAmount: 7000, explanation: "売上戻りは売上（収益）を取り消すため借方に記入し、売掛金（資産）も減らします。" },
       { id: "t8-3", format: "twochoice", prompt: "仕入戻しがあったとき、仕入は増える？減る？", options: ["増える", "減る"], answer: "減る", explanation: "返品した分だけ仕入は取り消されて減ります。" },
       { id: "t8-4", format: "twochoice", prompt: "売上戻りがあったとき、売上は増える？減る？", options: ["増える", "減る"], answer: "減る", explanation: "返品された分だけ売上は取り消されて減ります。" },
       { id: "t8-5", format: "twochoice", prompt: "仕入戻しは仕訳のどちら側に記入する？", options: ["借方", "貸方"], answer: "貸方", explanation: "仕入（費用）の取り消しなので貸方に記入します。" },

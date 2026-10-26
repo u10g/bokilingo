@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustmentsUpTo, afterAmount, netIncome, NET_KEY, stepChoices, stepSlots, validateStory, visibleAccounts } from "./story.ts";
+import { adjustmentsUpTo, afterAmount, ledgerClosing, ledgerPostings, netIncome, NET_KEY, stepChoices, stepSlots, validateStory, visibleAccounts } from "./story.ts";
 import type { Story } from "./types.ts";
 
 const story: Story = {
@@ -84,5 +84,59 @@ describe("ストーリーの表", () => {
     expect(errors).toMatch("一致しない");
     expect(errors).toMatch("2回以上");
     expect(errors).toMatch("ダミー");
+  });
+});
+
+describe("勘定記入のストーリー", () => {
+  const ledgerStory: Story = {
+    id: "l",
+    topicId: "ledger-entry",
+    table: "ledger",
+    title: "",
+    intro: "",
+    accounts: [],
+    ledger: { account: "繰越利益剰余金", side: "貸", opening: { date: "4/1", desc: "前期繰越", amount: 500 }, closing: { date: "3/31", desc: "次期繰越" } },
+    steps: [
+      {
+        date: "6/25",
+        item: "配当",
+        entries: [
+          { account: "繰越利益剰余金", dr: 220 },
+          { account: "未払配当金", cr: 200 },
+          { account: "利益準備金", cr: 20 },
+        ],
+        distractors: ["資本金", "1"],
+        explanation: "",
+      },
+      { item: "関係しない取引", entries: [{ account: "現金", dr: 10 }, { account: "売上", cr: 10 }], distractors: [], explanation: "" },
+      { date: "3/31", item: "当期純利益", entries: [{ account: "損益", dr: 180 }, { account: "繰越利益剰余金", cr: 180 }], distractors: ["売上", "2"], explanation: "" },
+    ],
+    finale: { distractors: ["3", "4"], explanation: "" },
+  };
+
+  it("相手科目が複数なら、相手科目ごとに行を分けて転記する", () => {
+    expect(ledgerPostings(ledgerStory, 0).map((p) => [p.side, p.desc, p.amount])).toEqual([
+      ["dr", "未払配当金", 200],
+      ["dr", "利益準備金", 20],
+    ]);
+  });
+
+  it("勘定の側に他の科目もあり、相手科目が1つなら、勘定の金額で相手科目を書く", () => {
+    const sale: Story = {
+      ...ledgerStory,
+      ledger: { account: "減価償却累計額", side: "貸", closing: { date: "3/31", desc: "次期繰越" } },
+      steps: [{ date: "4/1", item: "", entries: [{ account: "減価償却累計額", dr: 120 }, { account: "未収入金", dr: 80 }, { account: "備品", cr: 200 }], distractors: [], explanation: "" }],
+    };
+    expect(ledgerPostings(sale, 0).map((p) => [p.desc, p.amount])).toEqual([["備品", 120]]);
+  });
+
+  it("勘定に関係しない取引には空欄がない", () => {
+    expect(stepSlots(ledgerStory, 1)).toEqual([]);
+  });
+
+  it("締切は残高と反対側に記入し、合計を求める", () => {
+    expect(ledgerClosing(ledgerStory)).toEqual({ side: "dr", amount: 460, total: 680 });
+    expect(stepSlots(ledgerStory, 3).map((s) => s.answer)).toEqual(["460", "680"]);
+    expect(validateStory(ledgerStory)).toEqual([]);
   });
 });

@@ -146,6 +146,14 @@ export interface StoryLine {
   temp?: boolean; // 決算整理で0になって消える仮の科目（仮払金・仮受消費税など）
 }
 
+// 勘定記入のストーリーで記入する勘定
+export interface StoryLedger {
+  account: string;
+  side: "借" | "貸"; // 残高が出る側
+  opening?: { date: string; desc: string; amount: number }; // 前期繰越・前月繰越（最初から記入済み）
+  closing: { date: string; desc: string }; // 締切の行（次期繰越・次月繰越・損益）。金額は計算する
+}
+
 // 修正記入（＝決算整理仕訳）の1行
 export interface StoryEntry {
   account: string;
@@ -154,7 +162,8 @@ export interface StoryEntry {
 }
 
 export interface StoryStep {
-  item: string; // 決算整理事項（1行）
+  item: string; // 決算整理事項・取引（1行）
+  date?: string; // 勘定記入（ledger）で、T勘定の日付欄に出す日付（例：4/1）
   entries: StoryEntry[];
   distractors: string[];
   explanation: string;
@@ -165,9 +174,11 @@ export interface Story {
   topicId: string; // この論点のレッスンの直後に置く
   // 埋めていく表の種類。worksheet は精算表（修正記入を埋める）、
   // adjustedTb は決算整理後残高試算表（影響を受けた科目の整理後の残高を埋める）、
-  // statements は財務諸表（金額が変わった表示科目の行を埋める。lines が必要）
-  table: "worksheet" | "adjustedTb" | "statements";
+  // statements は財務諸表（金額が変わった表示科目の行を埋める。lines が必要）、
+  // ledger は勘定記入（1つの勘定に、取引ごとの摘要と金額を記入して締め切る。ledger が必要）
+  table: "worksheet" | "adjustedTb" | "statements" | "ledger";
   lines?: StoryLine[];
+  ledger?: StoryLedger;
   title: string;
   intro: string;
   accounts: StoryAccount[];

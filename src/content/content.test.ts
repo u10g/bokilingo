@@ -34,6 +34,12 @@ describe("問題バンク", () => {
     expect([...formats].sort()).toEqual(["classify", "journalBlank", "ledgerAccount", "multiSelect", "tableBlank"]);
   });
 
+  // 問題文の書き方は本試験にそろえる（docs/topic-map.md「問題文の構造」）
+  it("問題文の金額は¥表記、語尾は「こととした」", () => {
+    const bad = BANK.map((e) => e.question).filter((q) => /\d円|ことにした/.test(q.prompt));
+    expect(bad.map((q) => `${q.id}: ${q.prompt}`)).toEqual([]);
+  });
+
   it("すべての論点に問題がある", () => {
     const used = new Set(BANK.map((e) => e.topicId));
     expect(Object.keys(TOPICS).filter((t) => !used.has(t))).toEqual([]);
@@ -247,8 +253,11 @@ describe("勘定記入（ledgerAccount）", () => {
 
     // 借方合計＝貸方合計＝合計欄（空欄は正解で埋めて計算する）
     const sum = (es: typeof q.debit) => es.reduce((t, e) => t + num(text(e.amount)), 0);
-    expect(sum(q.debit)).toBe(sum(q.credit));
-    if (q.total !== undefined) expect(num(text(q.total))).toBe(sum(q.debit));
+    // 締め切った勘定（合計欄あり）は借方合計＝貸方合計＝合計欄。途中の勘定は合計欄を出さない
+    if (q.total !== undefined) {
+      expect(sum(q.debit)).toBe(sum(q.credit));
+      expect(num(text(q.total))).toBe(sum(q.debit));
+    }
 
     // 同じ語の空欄が複数ある勘定（再振替と見越しの相手科目など）では、その数だけ同じ選択肢を置く
     const count = (xs: string[]) => xs.reduce<Record<string, number>>((m, x) => ({ ...m, [x]: (m[x] ?? 0) + 1 }), {});
