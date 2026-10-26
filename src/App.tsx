@@ -20,6 +20,7 @@ import { LessonScreen } from "./screens/LessonScreen.tsx";
 import { MapScreen } from "./screens/MapScreen.tsx";
 import { ClearScreen, HeartsEmptyScreen } from "./screens/ResultScreens.tsx";
 import { ReviewScreen } from "./screens/ReviewScreen.tsx";
+import { StoryScreen } from "./screens/StoryScreen.tsx";
 import { WeakReviewScreen } from "./screens/WeakReviewScreen.tsx";
 import { clearProgress, loadProgress, saveProgress } from "./storage.ts";
 
@@ -37,6 +38,7 @@ type Screen =
   | "streakDetail"
   | "progressDetail"
   | "review"
+  | "story"
   | "weakReview"
   | "courseSelect";
 
@@ -99,7 +101,7 @@ export default function App() {
     setActiveNodeIndex(i);
     setLessonQuestions(questionsFor(i));
     setAttemptId((n) => n + 1);
-    setScreen("lesson");
+    setScreen(currentNodes[i].kind === "story" ? "story" : "lesson");
   };
 
   const handleWrongAnswer = (question: Question, nodeTitle: string) => {
@@ -253,6 +255,15 @@ export default function App() {
           hearts={hearts}
           onWrongAnswer={(q) => handleWrongAnswer(q, currentNodes[activeNodeIndex].title)}
           onCorrectAnswer={handleCorrectAnswer}
+          onExit={backToMap}
+          onComplete={handleLessonComplete}
+        />
+      )}
+
+      {screen === "story" && activeNodeIndex !== null && currentNodes[activeNodeIndex].story && (
+        <StoryScreen
+          key={`${currentCourse.id}-${activeNodeIndex}-${attemptId}`}
+          story={currentNodes[activeNodeIndex].story}
           onExit={backToMap}
           onComplete={handleLessonComplete}
         />

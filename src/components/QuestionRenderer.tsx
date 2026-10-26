@@ -143,8 +143,8 @@ function JournalView({ q, answer, setAnswer }: Props<JournalQuestion, JournalAns
    空欄が複数ある場合は、埋めたいセルをタップして選んでから語を入れる。
 --------------------------------------------------------- */
 
-// 単語バンクの操作（仕訳穴埋めと表の穴埋めで共通）
-function useTokenBank(q: { id: string; choices: string[] }, slots: JournalSlot[], answer: JournalBlankAnswer, setAnswer: (a: Answer) => void) {
+// 単語バンクの操作（仕訳穴埋め・表の穴埋め・ストーリーで共通）
+export function useTokenBank(q: { id: string; choices: string[] }, slots: JournalSlot[], answer: JournalBlankAnswer, setAnswer: (a: Answer) => void) {
   // 選択肢は毎回並び順を変えるが、同じ問題を解いている間は固定する
   const tokens = useMemo(() => shuffled(q.choices.map((label, i) => ({ id: tokenId(q, i), label }))), [q]);
   const placed = answer.slots;
@@ -180,7 +180,7 @@ function useTokenBank(q: { id: string; choices: string[] }, slots: JournalSlot[]
   return { tokens, placed, usedIds, tokenById, targetKey, placeToken, handleSlotTap };
 }
 
-function TokenBank({ tokens, usedIds, onPick }: { tokens: { id: string; label: string }[]; usedIds: string[]; onPick: (t: { id: string }) => void }) {
+export function TokenBank({ tokens, usedIds, onPick }: { tokens: { id: string; label: string }[]; usedIds: string[]; onPick: (t: { id: string }) => void }) {
   return (
     <div className="flex flex-wrap items-start content-start gap-2 justify-center min-h-24">
       {tokens.map((t) => {

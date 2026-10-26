@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildCourse, chunkEvenly, pickReviewQuestions, type BankEntry, type CourseDef } from "./course.ts";
-import type { ClassifyQuestion, JournalBlankQuestion } from "./types.ts";
+import { buildCourse, chunkEvenly, lessonSize, pickReviewQuestions, type BankEntry, type CourseDef } from "./course.ts";
+import type { ClassifyQuestion, JournalBlankQuestion, Story } from "./types.ts";
 
 const cq = (id: string): ClassifyQuestion => ({ id, format: "classify", prompt: id, answer: "資産", explanation: "" });
 const jq = (id: string): JournalBlankQuestion => ({
@@ -52,6 +52,14 @@ describe("buildCourse", () => {
     const regular = course.nodes.filter((n) => n.kind !== "review").flatMap((n) => n.questions.map((q) => q.id));
     expect(regular).not.toContain("a-check");
     expect(course.nodes.at(-1)!.questions.map((q) => q.id)).toContain("a-check");
+  });
+
+  it("ストーリーは、その論点のレッスンの直後（セクション復習の前）に置く", () => {
+    const story: Story = { id: "st", topicId: "a", table: "worksheet", title: "S", intro: "", accounts: [], steps: [], finale: { distractors: [], explanation: "" } };
+    const withStory = buildCourse(def, topics, bank, [story]);
+    expect(withStory.nodes.map((n) => n.kind)).toEqual(["classify", "classify", "journal", "story", "classify", "review"]);
+    const node = withStory.nodes[3];
+    expect([node.id, node.unit, lessonSize(node)]).toEqual(["x:story:st", "論点A", 1]);
   });
 
   it("レッスンIDはコース・論点・形式・番号から決まる", () => {

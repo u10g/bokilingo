@@ -1,5 +1,5 @@
 import { shuffled } from "./questions.ts";
-import type { Course, LessonNode, Question } from "./types.ts";
+import type { Course, LessonNode, Question, Story } from "./types.ts";
 
 /* ---------------------------------------------------------
    コース構造
@@ -7,7 +7,7 @@ import type { Course, LessonNode, Question } from "./types.ts";
    これにより、TAC順と頻度順の2コースで同じ問題を共有する。
 
    セクション内のレッスンは自動で組み立てる。
-     小項目（論点）ごとに 5要素分類 ×n → 仕訳穴埋め ×n → 帳簿・表 ×n（ある論点のみ）
+     小項目（論点）ごとに 5要素分類 ×n → 仕訳穴埋め ×n → 帳簿・表 ×n → ストーリー（ある論点のみ）
      → セクション復習（正答率70%以上で合格）
 --------------------------------------------------------- */
 
@@ -89,7 +89,28 @@ function lessonsForTopic(courseId: string, sectionId: string, topic: TopicDef, e
   });
 }
 
-export function buildCourse(def: CourseDef, topics: Record<string, TopicDef>, bank: BankEntry[]): Course {
+// ストーリーは1レッスンで表を1枚完成させる。問題バンクの問題は使わない
+function storyNode(courseId: string, sectionId: string, topic: TopicDef, story: Story): LessonNode {
+  return {
+    id: `${courseId}:story:${story.id}`,
+    title: story.title,
+    kind: "story",
+    chapter: sectionId,
+    unit: topic.title,
+    desc: `決算整理事項を1つずつ読みながら、表を最後まで完成させます（${story.steps.length}ステップ）。`,
+    questions: [],
+    story,
+  };
+}
+
+// レッスンの問題数（学習の記録で数える）。セクション復習は実際に出す数、ストーリーはステップ数＋当期純利益
+export function lessonSize(n: LessonNode): number {
+  if (n.kind === "review") return Math.min(REVIEW_SIZE, n.questions.length);
+  if (n.kind === "story") return (n.story?.steps.length ?? 0) + 1;
+  return n.questions.length;
+}
+
+export function buildCourse(def: CourseDef, topics: Record<string, TopicDef>, bank: BankEntry[], stories: Story[] = []): Course {
   const byTopic = new Map<string, BankEntry[]>();
   for (const e of bank) {
     const list = byTopic.get(e.topicId) ?? [];
@@ -103,6 +124,7 @@ export function buildCourse(def: CourseDef, topics: Record<string, TopicDef>, ba
       const topic = topics[tid];
       if (!topic) throw new Error(`${def.id}: 未定義の論点 ${tid}`);
       nodes.push(...lessonsForTopic(def.id, s.id, topic, byTopic.get(tid) ?? []));
+      nodes.push(...stories.filter((st) => st.topicId === tid).map((st) => storyNode(def.id, s.id, topic, st)));
     }
     // セクション復習の出題候補は、セクション内の全問（復習専用の問題を含む）
     const pool = s.topicIds.flatMap((tid) => (byTopic.get(tid) ?? []).map((e) => e.question));
