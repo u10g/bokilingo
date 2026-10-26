@@ -49,7 +49,7 @@ export function journalSlots(q: JournalBlankQuestion): JournalSlot[] {
   return slots;
 }
 
-// 表の空欄を、上の行・左の列から順に返す
+// 表の空欄を、入力する順に返す。order がなければ上の行・左の列から
 export function tableSlots(q: TableBlankQuestion): JournalSlot[] {
   const slots: JournalSlot[] = [];
   q.rows.forEach((row, ri) =>
@@ -57,7 +57,12 @@ export function tableSlots(q: TableBlankQuestion): JournalSlot[] {
       if (typeof cell !== "string") slots.push({ key: `r${ri}c${ci}`, answer: cell.blank });
     }),
   );
-  return slots;
+  if (!q.order) return slots;
+  const rank = (key: string) => {
+    const i = q.order!.indexOf(key);
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...slots].sort((a, b) => rank(a.key) - rank(b.key));
 }
 
 // 勘定記入の空欄を、借方（上から）→ 貸方（上から）→ 合計 の順に返す。

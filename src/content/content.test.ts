@@ -202,6 +202,8 @@ describe("表の穴埋め（tableBlank）", () => {
     const slots = tableSlots(q);
     expect(slots.length).toBeGreaterThan(0);
     for (const row of q.rows) expect(row).toHaveLength(q.columns.length);
+    // 入力順を指定するときは、すべての空欄をちょうど1回ずつ並べる
+    if (q.order) expect([...q.order].sort()).toEqual(slots.map((x) => x.key).sort());
     // 同じ金額の空欄が複数ある表（修正記入の借方と貸方など）では、その数だけ同じ選択肢を置く
     const count = (xs: string[]) => xs.reduce<Record<string, number>>((m, x) => ({ ...m, [x]: (m[x] ?? 0) + 1 }), {});
     const need = count(slots.map((s) => s.answer));

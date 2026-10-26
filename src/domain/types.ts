@@ -70,6 +70,8 @@ export interface TableBlankQuestion extends QuestionBase {
   columns: string[];
   rows: TableCell[][];
   choices: string[];
+  // 空欄を埋める順（キーは r行c列）。数字が分かる順に入力できるよう、行・列の順と違うときに指定する
+  order?: string[];
 }
 
 // 勘定記入（T勘定）。摘要や金額の空欄を語群から埋める。第2問の勘定記入用
