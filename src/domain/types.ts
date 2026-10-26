@@ -132,6 +132,16 @@ export interface StoryAccount {
   pl?: boolean; // 損益計算書の科目（収益・費用）
 }
 
+// 財務諸表の表示科目の行。勘定科目（accounts）の整理後の金額を合計して表示する。
+// 例：前払費用 ＝ 前払保険料 ＋ 前払家賃、売上原価 ＝ 仕入
+export interface StoryLine {
+  label: string; // 表示科目
+  statement: "PL" | "BS";
+  accounts: string[]; // 同じ側（借・貸）の科目だけを入れる
+  contra?: boolean; // 資産から差し引く科目（貸倒引当金・減価償却累計額）。△を付けて資産の部に出す
+  temp?: boolean; // 決算整理で0になって消える仮の科目（仮払金・仮受消費税など）
+}
+
 // 修正記入（＝決算整理仕訳）の1行
 export interface StoryEntry {
   account: string;
@@ -150,8 +160,10 @@ export interface Story {
   id: string;
   topicId: string; // この論点のレッスンの直後に置く
   // 埋めていく表の種類。worksheet は精算表（修正記入を埋める）、
-  // adjustedTb は決算整理後残高試算表（影響を受けた科目の整理後の残高を埋める）
-  table: "worksheet" | "adjustedTb";
+  // adjustedTb は決算整理後残高試算表（影響を受けた科目の整理後の残高を埋める）、
+  // statements は財務諸表（金額が変わった表示科目の行を埋める。lines が必要）
+  table: "worksheet" | "adjustedTb" | "statements";
+  lines?: StoryLine[];
   title: string;
   intro: string;
   accounts: StoryAccount[];
