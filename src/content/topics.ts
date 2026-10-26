@@ -24,7 +24,11 @@ const list: TopicDef[] = [
   { id: "depreciation-entry", title: "減価償却③ 間接法の仕訳", desc: "減価償却費と減価償却累計額で記帳します。" },
   { id: "depreciation-sale", title: "減価償却④ 帳簿価額と売却", desc: "帳簿価額を求め、売却損益を判断します。" },
   { id: "depreciation-midyear", title: "減価償却⑤ 期中売却", desc: "当期分の減価償却費を月割で計上してから売却します。" },
-  { id: "bad-debts", title: "貸倒れと貸倒引当金", desc: "回収できない債権への備えです。" },
+  { id: "bad-debts-amount", title: "貸倒引当金① 設定額", desc: "売掛金などの期末残高に設定率をかけて、設定額を求めます。" },
+  { id: "bad-debts-refill", title: "貸倒引当金② 差額補充法", desc: "設定額と残高の差額から、繰入か戻入かと金額を求めます。" },
+  { id: "bad-debts-entry", title: "貸倒引当金③ 決算整理仕訳", desc: "貸倒引当金繰入・貸倒引当金戻入の仕訳です。" },
+  { id: "bad-debts-writeoff", title: "貸倒引当金④ 貸倒れの処理", desc: "いつ販売した債権かで、貸倒引当金を使うか貸倒損失にするかを判断します。" },
+  { id: "bad-debts-recovery", title: "貸倒引当金⑤ 償却債権取立益", desc: "前期以前に貸倒れとした債権を回収したときの処理です。" },
   { id: "accruals-type", title: "経過勘定① 4つの分類", desc: "前払費用・前受収益・未払費用・未収収益のどれかを判断します。" },
   { id: "accruals-account", title: "経過勘定② 勘定科目", desc: "前払保険料・未払利息など、計上する勘定科目です。" },
   { id: "accruals-months", title: "経過勘定③ 月数と金額", desc: "支払日・受取日から決算日までの月数を数えて月割します。" },
@@ -48,7 +52,7 @@ export const TOPICS: Record<string, TopicDef> = Object.fromEntries(list.map((t) 
 
 /* ---------------------------------------------------------
    本試験の分析で使う論点のまとまり
-   減価償却と経過勘定はアプリでは要素ごとの小項目に分けているが、
+   減価償却・経過勘定・貸倒引当金はアプリでは要素ごとの小項目に分けているが、
    参考書の集計（tools/pdf・docs/data/tags.csv）では1つの論点として数える。
    tools/pdf はこのファイルの { id, title } を読むので、ここにも同じ形で書いておく。
 --------------------------------------------------------- */
@@ -56,4 +60,5 @@ export const TOPICS: Record<string, TopicDef> = Object.fromEntries(list.map((t) 
 export const ANALYSIS_TOPICS: TopicDef[] = [
   { id: "depreciation", title: "減価償却", desc: "depreciation-* の小項目をまとめたもの。" },
   { id: "accruals", title: "経過勘定", desc: "accruals-* の小項目をまとめたもの。" },
+  { id: "bad-debts", title: "貸倒れと貸倒引当金", desc: "bad-debts-* の小項目をまとめたもの。" },
 ];

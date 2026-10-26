@@ -32,7 +32,7 @@ const LESSON_TOPIC: Record<string, string> = {
   "ac-e3": "services",
   "ac-f1": "fixed-assets",
   "ac-f2": "depreciation-entry",
-  "ac-g1": "bad-debts",
+  "ac-g1": "bad-debts-writeoff",
   "ac-g2": "accruals-entry",
   "ac-g3": "closing",
   "ac-h1": "consumption-tax",
@@ -50,7 +50,7 @@ const LESSON_TOPIC: Record<string, string> = {
   jb10: "rent",
   jb11: "fixed-assets",
   jb12: "depreciation-sale",
-  jb13: "bad-debts",
+  jb13: "bad-debts-writeoff",
   jb14: "accruals-entry",
 };
 
@@ -62,7 +62,7 @@ const CHECKPOINT_TOPIC: Record<string, string> = {
   "ac-d-check": "payroll",
   "ac-e-check": "expenses",
   "ac-f-check": "fixed-assets",
-  "ac-g-check": "bad-debts",
+  "ac-g-check": "bad-debts-amount",
   "ac-h-check": "consumption-tax",
   "ac-i-check": "equity",
   "jb-a-check": "sales-basic",
@@ -71,10 +71,10 @@ const CHECKPOINT_TOPIC: Record<string, string> = {
   "jb-d-check": "payroll",
   "jb-e-check": "expenses",
   "jb-f-check": "fixed-assets",
-  "jb-g-check": "bad-debts",
+  "jb-g-check": "bad-debts-amount",
 };
 
-// レッスン単位の割り当てと異なる問題（売上原価と経過勘定が混在していたレッスンと、減価償却・経過勘定を要素ごとに分けたもの）
+// レッスン単位の割り当てと異なる問題（売上原価と経過勘定が混在していたレッスンと、減価償却・経過勘定・貸倒引当金を要素ごとに分けたもの）
 const QUESTION_TOPIC: Record<string, string> = {
   "jb14-q1": "closing",
   "jb14-q2": "closing",
@@ -88,6 +88,13 @@ const QUESTION_TOPIC: Record<string, string> = {
   "ac-g2-2": "accruals-type",
   "ac-g2-3": "accruals-type",
   "ac-g2-4": "accruals-type",
+  "ac-g1-1": "bad-debts-entry",
+  "ac-g1-2": "bad-debts-entry",
+  "ac-g1-4": "bad-debts-entry",
+  "ac-g1-5": "bad-debts-recovery",
+  "jb13-q1": "bad-debts-entry",
+  "jb13-q5": "bad-debts-entry",
+  "jb13-q4": "bad-debts-recovery",
 };
 
 export const UNUSED_LEGACY_LESSONS = ["ac-mix1", "ac-mix2", "ac-check"];
