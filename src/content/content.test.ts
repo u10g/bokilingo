@@ -189,8 +189,20 @@ describe("表の穴埋め（tableBlank）", () => {
     const slots = tableSlots(q);
     expect(slots.length).toBeGreaterThan(0);
     for (const row of q.rows) expect(row).toHaveLength(q.columns.length);
-    for (const s of slots) expect(q.choices).toContain(s.answer);
-    expect(dupes(q.choices)).toEqual([]);
+    // 同じ金額の空欄が複数ある表（修正記入の借方と貸方など）では、その数だけ同じ選択肢を置く
+    const count = (xs: string[]) => xs.reduce<Record<string, number>>((m, x) => ({ ...m, [x]: (m[x] ?? 0) + 1 }), {});
+    const need = count(slots.map((s) => s.answer));
+    const have = count(q.choices);
+    for (const [label, n] of Object.entries(need)) expect(have[label] ?? 0, label).toBeGreaterThanOrEqual(n);
+    for (const [label, n] of Object.entries(have)) expect(n, label).toBeLessThanOrEqual(Math.max(1, need[label] ?? 0));
+
+    // 精算表は、修正記入の借方合計と貸方合計が一致する
+    const [idr, icr] = ["修正 借方", "修正 貸方"].map((c) => q.columns.indexOf(c));
+    if (idr >= 0 && icr >= 0) {
+      const v = (c: (typeof q.rows)[number][number]) => num(typeof c === "string" ? c : c.blank) || 0;
+      const sum = (i: number) => q.rows.reduce((t, row) => t + v(row[i]), 0);
+      expect(sum(idr)).toBe(sum(icr));
+    }
 
     // 数量×単価＝金額 の表は、空欄を正解で埋めたうえで計算が合うか確かめる
     const [iq, iu, ia] = ["数量", "単価", "金額"].map((c) => q.columns.indexOf(c));
