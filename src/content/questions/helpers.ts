@@ -120,7 +120,10 @@ export function ws(
 
 export type InvMethod = "移動平均法" | "先入先出法";
 // [日付, 取引, 数量, 単価]。売上の単価は売価（帳簿には原価で記入する）
-export type InvTx = [date: string, kind: "前月繰越" | "仕入" | "売上", qty: number, price: number];
+// 返品は [日付, 取引, 数量, 元の取引の日付]。単価は元の取引から決まる（仕入戻しは仕入単価、売上戻りは払出単価＝原価）
+export type InvTx =
+  | [date: string, kind: "前月繰越" | "仕入" | "売上", qty: number, price: number]
+  | [date: string, kind: "仕入戻し" | "売上戻り", qty: number, ref: string];
 export type InvSection = "受入" | "払出" | "残高";
 export type InvCol = "q" | "p" | "a";
 // [日付, 欄, 列, 同じ欄の何行目か（先入先出法で単価ごとに行が分かれるとき）]
@@ -153,8 +156,30 @@ export function inventoryRows(method: InvMethod, txs: InvTx[]): InvRow[] {
       for (const l of lots) rows.push({ date, kind, section: "残高", q: l.q, p: l.p, a: l.q * l.p });
     }
   };
-  for (const [date, kind, qty, price] of txs) {
-    if (kind === "売上") {
+  for (const tx of txs) {
+    const [date, kind, qty] = tx;
+    if (tx[1] === "仕入戻し") {
+      // 仕入戻しは払出欄に、仕入れたときの単価で記入する。先入先出法では、その単価の在庫から減らす
+      const p = refTx(txs, tx[3], "仕入")[3];
+      rows.push({ date, kind, section: "払出", q: qty, p, a: qty * p });
+      if (method === "移動平均法") {
+        // 残高の計算で数量と金額から差し引く（平均単価は pushBalance で計算し直す）
+        lots.push({ q: -qty, p });
+      } else {
+        const lot = [...lots].reverse().find((l) => l.p === p);
+        if (!lot || lot.q < qty) throw new Error(`${date}: 戻す在庫が足りない`);
+        lot.q -= qty;
+        lots = lots.filter((l) => l.q > 0);
+      }
+    } else if (tx[1] === "売上戻り") {
+      // 売上戻りは受入欄に、払い出したときの単価（原価）で記入する。先入先出法は戻す在庫の位置が決まらないので扱わない
+      if (method !== "移動平均法") throw new Error(`${date}: 売上戻りは移動平均法だけで扱う`);
+      const out = rows.filter((r) => r.date === tx[3] && r.kind === "売上" && r.section === "払出");
+      if (out.length !== 1) throw new Error(`${date}: ${tx[3]} の払出がない`);
+      const p = out[0].p;
+      rows.push({ date, kind, section: "受入", q: qty, p, a: qty * p });
+      lots.push({ q: qty, p });
+    } else if (kind === "売上") {
       let rest = qty;
       while (rest > 0) {
         const lot = lots[0];
@@ -166,6 +191,7 @@ export function inventoryRows(method: InvMethod, txs: InvTx[]): InvRow[] {
         if (lot.q === 0) lots.shift();
       }
     } else {
+      const price = tx[3] as number;
       rows.push({ date, kind, section: "受入", q: qty, p: price, a: qty * price });
       lots.push({ q: qty, p: price });
     }
@@ -174,10 +200,30 @@ export function inventoryRows(method: InvMethod, txs: InvTx[]): InvRow[] {
   return rows;
 }
 
-// 本試験と同じく「6月8日 仕入 30個 @¥160」の形で書く
-const txLine = ([date, kind, qty, price]: InvTx) => {
+// 返品の元になった取引
+function refTx(txs: InvTx[], date: string, kind: "仕入" | "売上") {
+  const hit = txs.find((t): t is [string, "仕入" | "売上", number, number] => t[0] === date && t[1] === kind);
+  if (!hit) throw new Error(`${date} の${kind}がない`);
+  return hit;
+}
+
+const jpDate = (date: string) => {
   const [m, d] = date.split("/");
-  return `${m}月${d}日 ${kind} ${qty}個 @¥${yen(price)}${kind === "売上" ? "（売価）" : ""}`;
+  return `${m}月${d}日`;
+};
+
+// 本試験と同じく「6月8日 仕入 30個 @¥160」の形で書く。返品は「6月10日 仕入戻し 5個（6月8日仕入分）」
+const txLine = (tx: InvTx) => {
+  const [date, kind, qty] = tx;
+  if (tx[1] === "仕入戻し" || tx[1] === "売上戻り") return `${jpDate(date)} ${kind} ${qty}個（${jpDate(tx[3])}${tx[1] === "仕入戻し" ? "仕入" : "売上"}分）`;
+  return `${jpDate(date)} ${kind} ${qty}個 @¥${yen(tx[3] as number)}${kind === "売上" ? "（売価）" : ""}`;
+};
+
+// 返品があるときは、本試験と同じく記入する欄を「なお、」で指示する
+const returnNote = (txs: InvTx[]) => {
+  const kinds = new Set(txs.map((t) => t[1]));
+  const parts = [kinds.has("仕入戻し") && "仕入戻しは払出欄", kinds.has("売上戻り") && "売上戻りは受入欄"].filter(Boolean);
+  return parts.length ? [`なお、${parts.join("に、")}に記入する。`] : [];
 };
 
 export function il(
@@ -204,8 +250,9 @@ export function il(
   const tableRows: TableCell[][] = rows.map((r, i) => {
     const first = i === 0 || rows[i - 1].date !== r.date || rows[i - 1].kind !== r.kind;
     const cols = blankAt.get(String(i)) ?? [];
-    // 移動平均法で仕入れた後の残高は、数量と金額を足してから単価を割り出す
-    const seq: InvCol[] = method === "移動平均法" && r.section === "残高" && r.kind === "仕入" ? ["q", "a", "p"] : ["q", "p", "a"];
+    // 移動平均法で仕入れた・返品した後の残高は、数量と金額を足し引きしてから単価を割り出す
+    const recalc = r.kind === "仕入" || r.kind === "仕入戻し" || r.kind === "売上戻り";
+    const seq: InvCol[] = method === "移動平均法" && r.section === "残高" && recalc ? ["q", "a", "p"] : ["q", "p", "a"];
     for (const c of seq) if (cols.includes(c)) order.push(`r${i}c${INV_COL_INDEX[c]}`);
     const cell = (c: InvCol): TableCell => {
       const v = yen(r[c]) || "0";
@@ -218,21 +265,28 @@ export function il(
   if (answers.length !== blanks.length) throw new Error(`${id}: 同じセルを2回空欄に指定している`);
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
 
-  const prompt = [`次の${item}に関する取引にもとづいて、${method}によって商品有高帳に記入する。`, ...txs.map(txLine)].join("\n");
+  const prompt = [`次の${item}に関する取引にもとづいて、${method}によって商品有高帳に記入する。`, ...returnNote(txs), ...txs.map(txLine)].join("\n");
   const entry = tb(topicId, id, prompt, `商品有高帳（${method}）${item}`, INV_COLUMNS, tableRows, [...answers, ...distractors], explanation);
   (entry.question as TableBlankQuestion).order = order;
   return entry;
 }
 
 // 同じ取引の一覧から、当月の売上高・売上原価・売上総利益を求める問題
+// 売上戻りは売上高から売価で、売上原価から原価で差し引く。仕入戻しは払出欄に書くが売上原価ではない
 export function ilSummary(topicId: string, id: string, method: InvMethod, item: string, txs: InvTx[], distractors: string[], explanation: string): BankEntry {
-  const sales = txs.filter(([, k]) => k === "売上").reduce((t, [, , q, p]) => t + q * p, 0);
-  const cost = inventoryRows(method, txs)
-    .filter((r) => r.section === "払出")
-    .reduce((t, r) => t + r.a, 0);
+  const sales = txs.reduce((t, tx) => {
+    if (tx[1] === "売上") return t + tx[2] * tx[3];
+    if (tx[1] === "売上戻り") return t - tx[2] * refTx(txs, tx[3], "売上")[3];
+    return t;
+  }, 0);
+  const cost = inventoryRows(method, txs).reduce((t, r) => {
+    if (r.kind === "売上" && r.section === "払出") return t + r.a;
+    if (r.kind === "売上戻り" && r.section === "受入") return t - r.a;
+    return t;
+  }, 0);
   const answers = [yen(sales), yen(cost), yen(sales - cost)];
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
-  const prompt = [`次の${item}に関する取引にもとづいて、${method}によった場合の当月の売上高・売上原価・売上総利益を求める。`, ...txs.map(txLine)].join("\n");
+  const prompt = [`次の${item}に関する取引にもとづいて、${method}によった場合の当月の売上高・売上原価・売上総利益を求める。`, ...returnNote(txs), ...txs.map(txLine)].join("\n");
   return tb(topicId, id, prompt, "売上総利益の計算", ["項目", "金額"], [
     ["売上高", blank(answers[0])],
     ["売上原価", blank(answers[1])],

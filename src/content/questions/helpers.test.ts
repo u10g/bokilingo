@@ -127,6 +127,51 @@ describe("商品有高帳のヘルパー", () => {
     expect(() => il("t", "x", "移動平均法", "A", TX, [["5/9", "払出", "a"]], ["2,875"], "")).toThrow();
   });
 
+  // 返品（数値はテスト用）
+  const RET: InvTx[] = [
+    ["7/1", "前月繰越", 20, 300],
+    ["7/5", "仕入", 30, 350],
+    ["7/7", "仕入戻し", 10, "7/5"],
+    ["7/15", "売上", 30, 500],
+    ["7/18", "売上戻り", 5, "7/15"],
+  ];
+
+  it("移動平均法：仕入戻しは払出欄に仕入単価で、売上戻りは受入欄に払出単価で記入し、平均単価を計算し直す", () => {
+    const rows = inventoryRows("移動平均法", RET).map((r) => [r.date, r.section, r.q, r.p, r.a]);
+    expect(rows.slice(4)).toEqual([
+      ["7/7", "払出", 10, 350, 3500],
+      ["7/7", "残高", 40, 325, 13000],
+      ["7/15", "払出", 30, 325, 9750],
+      ["7/15", "残高", 10, 325, 3250],
+      ["7/18", "受入", 5, 325, 1625],
+      ["7/18", "残高", 15, 325, 4875],
+    ]);
+  });
+
+  it("先入先出法：仕入戻しは、その単価の在庫から減らす。売上戻りは扱わない", () => {
+    const rows = inventoryRows("先入先出法", RET.slice(0, 3)).map((r) => [r.date, r.section, r.q, r.p]);
+    expect(rows.slice(-3)).toEqual([
+      ["7/7", "払出", 10, 350],
+      ["7/7", "残高", 20, 300],
+      ["7/7", "残高", 20, 350],
+    ]);
+    expect(() => inventoryRows("先入先出法", RET)).toThrow();
+  });
+
+  it("返品があるときは、記入する欄を「なお、」で指示し、元の取引を添える", () => {
+    const q = il("t", "x", "移動平均法", "A", RET, [["7/7", "残高", "p"], ["7/7", "残高", "a"]], ["1"], "").question as TableBlankQuestion;
+    expect(tableSlots(q).map((x) => x.answer)).toEqual(["13,000", "325"]);
+    expect(q.prompt.split("\n").slice(1, 2)).toEqual(["なお、仕入戻しは払出欄に、売上戻りは受入欄に記入する。"]);
+    expect(q.prompt).toContain("7月7日 仕入戻し 10個（7月5日仕入分）");
+    expect(q.prompt).toContain("7月18日 売上戻り 5個（7月15日売上分）");
+  });
+
+  it("売上戻りは、売上高から売価で、売上原価から原価で差し引く", () => {
+    const q = ilSummary("t", "x", "移動平均法", "A", RET, ["1"], "").question as TableBlankQuestion;
+    // 売上高 30×500−5×500＝12,500、売上原価 9,750−1,625＝8,125
+    expect(tableSlots(q).map((x) => x.answer)).toEqual(["12,500", "8,125", "4,375"]);
+  });
+
   it("売上高は売価、売上原価は払出欄の合計で計算する", () => {
     const q = ilSummary("t", "x", "先入先出法", "A", TX, ["1"], "").question as TableBlankQuestion;
     expect(tableSlots(q).map((x) => x.answer)).toEqual(["7,500", "2,800", "4,700"]);
