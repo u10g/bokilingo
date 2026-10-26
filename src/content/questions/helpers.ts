@@ -101,7 +101,139 @@ export function ws(
     return [r.account, ...cells];
   });
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
-  return tb(topicId, id, prompt, "精算表（一部）", WS_COLUMNS, tableRows, [...answers, ...distractors], explanation);
+  const entry = tb(topicId, id, prompt, "精算表（一部）", WS_COLUMNS, tableRows, [...answers, ...distractors], explanation);
+  // 整理後は修正記入から計算するので、修正記入の空欄を先に、整理後の空欄を後に埋める
+  const COL_INDEX: Record<WsCol, number> = { tb: 1, dr: 2, cr: 3, after: 4 };
+  const key = ([r, c]: [number, WsCol]) => `r${r}c${COL_INDEX[c]}`;
+  const sorted = [...blanks].sort(([r1, c1], [r2, c2]) => Number(c1 === "after") - Number(c2 === "after") || r1 - r2 || COL_INDEX[c1] - COL_INDEX[c2]);
+  (entry.question as TableBlankQuestion).order = sorted.map(key);
+  return entry;
+}
+
+/* ---------------------------------------------------------
+   商品有高帳の問題
+   取引の一覧から、移動平均法・先入先出法で帳簿の全行をヘルパーが計算する。
+   問題文は本試験と同じく取引の一覧で示し、空欄は指定したセルだけにする。
+   列は「日付・摘要／欄（受入・払出・残高）／数量／単価／金額」。
+   本試験の9列（受入・払出・残高 × 数量・単価・金額）はスマホに収まらないため、欄を行に分けている。
+--------------------------------------------------------- */
+
+export type InvMethod = "移動平均法" | "先入先出法";
+// [日付, 取引, 数量, 単価]。売上の単価は売価（帳簿には原価で記入する）
+export type InvTx = [date: string, kind: "前月繰越" | "仕入" | "売上", qty: number, price: number];
+export type InvSection = "受入" | "払出" | "残高";
+export type InvCol = "q" | "p" | "a";
+// [日付, 欄, 列, 同じ欄の何行目か（先入先出法で単価ごとに行が分かれるとき）]
+export type InvBlank = [date: string, section: InvSection, col: InvCol, nth?: number];
+
+export const INV_COLUMNS = ["日付・摘要", "欄", "数量", "単価", "金額"];
+const INV_COL_INDEX: Record<InvCol, number> = { q: 2, p: 3, a: 4 };
+
+interface InvRow {
+  date: string;
+  kind: InvTx[1];
+  section: InvSection;
+  q: number;
+  p: number;
+  a: number;
+}
+
+export function inventoryRows(method: InvMethod, txs: InvTx[]): InvRow[] {
+  const rows: InvRow[] = [];
+  let lots: { q: number; p: number }[] = [];
+  const pushBalance = (date: string, kind: InvTx[1]) => {
+    if (method === "移動平均法") {
+      const q = lots.reduce((t, l) => t + l.q, 0);
+      const a = lots.reduce((t, l) => t + l.q * l.p, 0);
+      if (q > 0 && a % q !== 0) throw new Error(`${date}: 平均単価 ${a}÷${q} が割り切れない`);
+      const p = q > 0 ? a / q : 0;
+      lots = q > 0 ? [{ q, p }] : [];
+      rows.push({ date, kind, section: "残高", q, p, a });
+    } else {
+      for (const l of lots) rows.push({ date, kind, section: "残高", q: l.q, p: l.p, a: l.q * l.p });
+    }
+  };
+  for (const [date, kind, qty, price] of txs) {
+    if (kind === "売上") {
+      let rest = qty;
+      while (rest > 0) {
+        const lot = lots[0];
+        if (!lot) throw new Error(`${date}: 在庫が足りない`);
+        const take = Math.min(rest, lot.q);
+        rows.push({ date, kind, section: "払出", q: take, p: lot.p, a: take * lot.p });
+        lot.q -= take;
+        rest -= take;
+        if (lot.q === 0) lots.shift();
+      }
+    } else {
+      rows.push({ date, kind, section: "受入", q: qty, p: price, a: qty * price });
+      lots.push({ q: qty, p: price });
+    }
+    pushBalance(date, kind);
+  }
+  return rows;
+}
+
+const txLine = ([date, kind, qty, price]: InvTx) => `${date} ${kind} ${qty}個 @${yen(price)}円${kind === "売上" ? "（売価）" : ""}`;
+
+export function il(
+  topicId: string,
+  id: string,
+  method: InvMethod,
+  item: string,
+  txs: InvTx[],
+  blanks: InvBlank[],
+  distractors: string[],
+  explanation: string,
+): BankEntry {
+  const rows = inventoryRows(method, txs);
+  const blankAt = new Map<string, InvCol[]>();
+  for (const [date, section, col, nth = 0] of blanks) {
+    const matches = rows.map((r, i) => [r, i] as const).filter(([r]) => r.date === date && r.section === section);
+    const hit = matches[nth];
+    if (!hit) throw new Error(`${id}: ${date} ${section} の${nth + 1}行目がない`);
+    blankAt.set(String(hit[1]), [...(blankAt.get(String(hit[1])) ?? []), col]);
+  }
+
+  const answers: string[] = [];
+  const order: string[] = [];
+  const tableRows: TableCell[][] = rows.map((r, i) => {
+    const first = i === 0 || rows[i - 1].date !== r.date || rows[i - 1].kind !== r.kind;
+    const cols = blankAt.get(String(i)) ?? [];
+    // 移動平均法で仕入れた後の残高は、数量と金額を足してから単価を割り出す
+    const seq: InvCol[] = method === "移動平均法" && r.section === "残高" && r.kind === "仕入" ? ["q", "a", "p"] : ["q", "p", "a"];
+    for (const c of seq) if (cols.includes(c)) order.push(`r${i}c${INV_COL_INDEX[c]}`);
+    const cell = (c: InvCol): TableCell => {
+      const v = yen(r[c]) || "0";
+      if (!cols.includes(c)) return v;
+      answers.push(v);
+      return blank(v);
+    };
+    return [first ? `${r.date} ${r.kind}` : "", r.section, cell("q"), cell("p"), cell("a")];
+  });
+  if (answers.length !== blanks.length) throw new Error(`${id}: 同じセルを2回空欄に指定している`);
+  for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
+
+  const prompt = [`${method}により、${item}の商品有高帳に記入する。`, ...txs.map(txLine)].join("\n");
+  const entry = tb(topicId, id, prompt, `商品有高帳（${method}）${item}`, INV_COLUMNS, tableRows, [...answers, ...distractors], explanation);
+  (entry.question as TableBlankQuestion).order = order;
+  return entry;
+}
+
+// 同じ取引の一覧から、当月の売上高・売上原価・売上総利益を求める問題
+export function ilSummary(topicId: string, id: string, method: InvMethod, item: string, txs: InvTx[], distractors: string[], explanation: string): BankEntry {
+  const sales = txs.filter(([, k]) => k === "売上").reduce((t, [, , q, p]) => t + q * p, 0);
+  const cost = inventoryRows(method, txs)
+    .filter((r) => r.section === "払出")
+    .reduce((t, r) => t + r.a, 0);
+  const answers = [yen(sales), yen(cost), yen(sales - cost)];
+  for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
+  const prompt = [`${method}により商品有高帳を記入している。${item}の当月の売上高・売上原価・売上総利益を求める。`, ...txs.map(txLine)].join("\n");
+  return tb(topicId, id, prompt, "売上総利益の計算", ["項目", "金額"], [
+    ["売上高", blank(answers[0])],
+    ["売上原価", blank(answers[1])],
+    ["売上総利益", blank(answers[2])],
+  ], [...answers, ...distractors], explanation);
 }
 
 /* ---------------------------------------------------------
