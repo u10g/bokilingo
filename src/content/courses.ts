@@ -9,23 +9,25 @@ import { TOPICS } from "./topics.ts";
    どちらも同じ問題バンクを使い、論点の並べ方だけが異なる。
    進捗はコースごとに独立する。先頭のコースを標準コースとして扱う。
 
-   並びの根拠は docs/topic-map.md。TAC順は教科書の目次が手に入るまで暫定。
+   並びの根拠は docs/topic-map.md。
 --------------------------------------------------------- */
 
+// TAC出版「簿記の教科書 日商3級」の章順（docs/topic-map.md）。
+// 問題がまだない章（01 簿記の基礎、07 帳簿、08 試算表、09 伝票、10・12 決算手続I・III）は、論点を追加したら差し込む
 const TAC: CourseDef = {
   id: "tac",
   title: "TAC順コース",
   subtitle: "教科書の章の順番で学ぶ",
-  stubNote: "章の並びは暫定です（参考書の分析後に確定）",
+  stubNote: "帳簿・試算表・伝票・精算表の章は準備中",
   sections: [
-    { id: "s1", title: "SECTION 1", subtitle: "商品売買", bg: "bg-emerald-500", sub: "text-emerald-100", topicIds: ["sales-basic", "sales-extra"] },
-    { id: "s2", title: "SECTION 2", subtitle: "現金と預金", bg: "bg-sky-500", sub: "text-sky-100", topicIds: ["cash-deposit", "cash-short"] },
-    { id: "s3", title: "SECTION 3", subtitle: "債権と債務", bg: "bg-indigo-500", sub: "text-indigo-100", topicIds: ["notes", "loans"] },
-    { id: "s4", title: "SECTION 4", subtitle: "従業員と仮勘定", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["payroll", "suspense"] },
-    { id: "s5", title: "SECTION 5", subtitle: "経費と賃借", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["expenses", "rent", "services"] },
-    { id: "s6", title: "SECTION 6", subtitle: "固定資産", bg: "bg-amber-600", sub: "text-amber-100", topicIds: ["fixed-assets", "depreciation"] },
-    { id: "s7", title: "SECTION 7", subtitle: "株式会社と税金", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["equity", "consumption-tax", "corporate-tax"] },
-    { id: "s8", title: "SECTION 8", subtitle: "決算", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["bad-debts", "accruals", "closing"] },
+    { id: "s1", title: "CHAPTER 02", subtitle: "商品売買", bg: "bg-emerald-500", sub: "text-emerald-100", topicIds: ["sales-basic", "sales-extra"] },
+    { id: "s2", title: "CHAPTER 03", subtitle: "現金預金", bg: "bg-sky-500", sub: "text-sky-100", topicIds: ["cash-deposit", "cash-short"] },
+    { id: "s3", title: "CHAPTER 04", subtitle: "手形と電子記録債権（債務）", bg: "bg-indigo-500", sub: "text-indigo-100", topicIds: ["notes"] },
+    { id: "s4", title: "CHAPTER 05", subtitle: "有形固定資産", bg: "bg-amber-600", sub: "text-amber-100", topicIds: ["fixed-assets"] },
+    { id: "s5", title: "CHAPTER 06 前半", subtitle: "その他の取引（債権債務・仮勘定・給料・賃借）", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["loans", "suspense", "payroll", "rent"] },
+    { id: "s6", title: "CHAPTER 06 後半", subtitle: "その他の取引（収益・費用・消費税・株式）", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["services", "expenses", "consumption-tax", "equity"] },
+    { id: "s7", title: "CHAPTER 11 前半", subtitle: "決算手続II（振替・貸倒れ・減価償却）", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts", "depreciation"] },
+    { id: "s8", title: "CHAPTER 11 後半", subtitle: "決算手続II（経過勘定・法人税等）", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["accruals", "corporate-tax"] },
   ],
 };
 
