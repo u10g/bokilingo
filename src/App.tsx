@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Header } from "./components/parts.tsx";
+import { Header, WeakCard } from "./components/parts.tsx";
+import { QUESTION_BY_ID } from "./content/bank.ts";
 import { COURSES } from "./content/courses.ts";
 import { pickReviewQuestions } from "./domain/course.ts";
 import { PASS_RATE, XP_PER_QUESTION, XP_PER_REVIEW } from "./domain/constants.ts";
@@ -13,20 +14,31 @@ import {
   type ProgressSnapshot,
 } from "./domain/progress.ts";
 import type { LessonResult, Question } from "./domain/types.ts";
+import { isGraduated, isWeak, missCountsOf, recordAnswer, WEAK_REVIEW_SIZE, weakQueue } from "./domain/weak.ts";
 import { CourseSelectScreen, ProgressDetailScreen, StreakDetailScreen } from "./screens/DetailScreens.tsx";
 import { LessonScreen } from "./screens/LessonScreen.tsx";
 import { MapScreen } from "./screens/MapScreen.tsx";
 import { ClearScreen, HeartsEmptyScreen } from "./screens/ResultScreens.tsx";
 import { ReviewScreen } from "./screens/ReviewScreen.tsx";
+import { WeakReviewScreen } from "./screens/WeakReviewScreen.tsx";
 import { clearProgress, loadProgress, saveProgress } from "./storage.ts";
 
 /* ---------------------------------------------------------
    ルートコンポーネント
    状態はすべてここで持ち、画面コンポーネントは props で受け取って表示する。
-   進捗は確定する契機（誤答・復習正解・レッスンクリア・コース切替）でのみ保存する。
+   進捗は確定する契機（回答・レッスンクリア・コース切替）で保存する。
 --------------------------------------------------------- */
 
-type Screen = "map" | "lesson" | "clear" | "heartsEmpty" | "streakDetail" | "progressDetail" | "review" | "courseSelect";
+type Screen =
+  | "map"
+  | "lesson"
+  | "clear"
+  | "heartsEmpty"
+  | "streakDetail"
+  | "progressDetail"
+  | "review"
+  | "weakReview"
+  | "courseSelect";
 
 export default function App() {
   const [loaded, setLoaded] = useState(false);
@@ -37,8 +49,12 @@ export default function App() {
   const [lastResult, setLastResult] = useState<LessonResult | null>(null);
   const [lessonQuestions, setLessonQuestions] = useState<Question[]>([]);
   const [attemptId, setAttemptId] = useState(0); // 挑戦ごとに出題順を引き直すためのキー
+  const [weakSession, setWeakSession] = useState<Question[]>([]);
 
-  const { activeCourseId, completedSets, solvedCount, totalXp, streak, lastActiveDate, wrongToday, missCounts } = progress;
+  const { activeCourseId, completedSets, solvedCount, totalXp, streak, lastActiveDate, wrongToday, questionStats } = progress;
+  const today = todayStr();
+  const weakIds = weakQueue(questionStats, today).filter((id) => QUESTION_BY_ID.has(id));
+  const statList = Object.values(questionStats);
   const hearts = heartsFor(wrongToday);
   const currentCourse = COURSES.find((c) => c.id === activeCourseId) ?? COURSES[0];
   const currentNodes = currentCourse.nodes;
@@ -75,7 +91,7 @@ export default function App() {
   // セクション復習は、挑戦のたびに候補から出題する問題を選び直す
   const questionsFor = (i: number) => {
     const node = currentNodes[i];
-    return node.kind === "review" ? pickReviewQuestions(node.questions, missCounts) : node.questions;
+    return node.kind === "review" ? pickReviewQuestions(node.questions, missCountsOf(questionStats)) : node.questions;
   };
 
   const handleStart = (i: number) => {
@@ -92,8 +108,14 @@ export default function App() {
       ...progress,
       wrongToday: alreadyListed ? wrongToday : [...wrongToday, { key: question.id, nodeTitle, question }],
       wrongTodayDate: todayStr(),
-      missCounts: { ...missCounts, [question.id]: (missCounts[question.id] ?? 0) + 1 },
+      questionStats: recordAnswer(questionStats, question.id, false, todayStr()),
     });
+  };
+
+  // 苦手な問題に正解したら、卒業に向けた日数を数える（苦手でない問題は記録しない）
+  const handleCorrectAnswer = (question: Question) => {
+    const next = recordAnswer(questionStats, question.id, true, todayStr());
+    if (next !== questionStats) commit({ ...progress, questionStats: next });
   };
 
   const handleReviewCorrect = (key: string) => {
@@ -103,6 +125,7 @@ export default function App() {
       ...progress,
       wrongToday: wrongToday.filter((w) => w.key !== key),
       wrongTodayDate: today,
+      questionStats: recordAnswer(questionStats, key, true, today),
       solvedCount: solvedCount + 1,
       totalXp: totalXp + XP_PER_REVIEW, // 復習の正解にも少しXPを付ける
       streak: bumped.streak,
@@ -131,6 +154,30 @@ export default function App() {
       lastActiveDate: bumped.lastActiveDate,
     });
     setScreen("clear");
+  };
+
+  const handleStartWeakReview = () => {
+    setWeakSession(weakIds.slice(0, WEAK_REVIEW_SIZE).map((id) => QUESTION_BY_ID.get(id)!));
+    setScreen("weakReview");
+  };
+
+  // 苦手の復習は練習扱い：誤答してもライフは減らない。正解には復習と同じXPを付ける
+  const handleWeakAnswer = (question: Question, ok: boolean) => {
+    const today = todayStr();
+    const questionStatsNext = recordAnswer(questionStats, question.id, ok, today);
+    if (!ok) {
+      commit({ ...progress, questionStats: questionStatsNext });
+      return;
+    }
+    const bumped = bumpStreak(streak, lastActiveDate, today);
+    commit({
+      ...progress,
+      questionStats: questionStatsNext,
+      solvedCount: solvedCount + 1,
+      totalXp: totalXp + XP_PER_REVIEW,
+      streak: bumped.streak,
+      lastActiveDate: bumped.lastActiveDate,
+    });
   };
 
   const handleClearContinue = () => {
@@ -184,7 +231,9 @@ export default function App() {
             onOpenStreak={() => setScreen("streakDetail")}
             onOpenProgress={() => setScreen("progressDetail")}
             onOpenReview={() => setScreen("review")}
-          />
+          >
+            {weakIds.length > 0 && <WeakCard count={weakIds.length} onStart={handleStartWeakReview} />}
+          </Header>
           <MapScreen
             course={currentCourse}
             completedSet={currentCompletedSet}
@@ -203,6 +252,7 @@ export default function App() {
           questions={lessonQuestions}
           hearts={hearts}
           onWrongAnswer={(q) => handleWrongAnswer(q, currentNodes[activeNodeIndex].title)}
+          onCorrectAnswer={handleCorrectAnswer}
           onExit={backToMap}
           onComplete={handleLessonComplete}
         />
@@ -230,12 +280,23 @@ export default function App() {
           solvedCount={solvedCount}
           totalXp={totalXp}
           completedSets={completedSets}
+          weakCount={statList.filter(isWeak).length}
+          graduatedCount={statList.filter(isGraduated).length}
           onResetData={handleResetData}
           onClose={backToMap}
         />
       )}
 
       {screen === "review" && <ReviewScreen wrongToday={wrongToday} onCorrect={handleReviewCorrect} onClose={backToMap} />}
+
+      {screen === "weakReview" && (
+        <WeakReviewScreen
+          questions={weakSession}
+          graduatedCount={weakSession.filter((q) => isGraduated(questionStats[q.id])).length}
+          onAnswer={handleWeakAnswer}
+          onClose={backToMap}
+        />
+      )}
 
       {screen === "courseSelect" && (
         <CourseSelectScreen

@@ -15,12 +15,14 @@ export function LessonScreen({
   questions,
   hearts,
   onWrongAnswer,
+  onCorrectAnswer,
   onExit,
   onComplete,
 }: {
   questions: Question[]; // 出題する問題。セクション復習では候補から選んだ一部
   hearts: number;
   onWrongAnswer: (q: Question) => void;
+  onCorrectAnswer: (q: Question) => void;
   onExit: () => void;
   onComplete: (result: LessonResult) => void;
 }) {
@@ -46,6 +48,7 @@ export function LessonScreen({
     setChecked(true);
     if (ok) {
       setMasteredIds((prev) => new Set(prev).add(current.id));
+      onCorrectAnswer(current);
     } else {
       setMissedIds((prev) => new Set(prev).add(current.id));
       onWrongAnswer(current);
