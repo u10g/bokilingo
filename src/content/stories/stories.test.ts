@@ -15,10 +15,14 @@ describe("ストーリーのデータ", () => {
     expect(netIncome(s)).toBeGreaterThan(0);
   });
 
-  it("精算表ストーリーの当期純利益と、解説の金額が一致する", () => {
-    const s = STORIES.find((x) => x.id === "story-ws-1")!;
+  // 最後のステップの解説に書いた金額（収益・費用・当期純利益）が、計算と一致する
+  it.each([
+    ["story-ws-1", 1050000, 973000, 77000],
+    ["story-tb-1", 1154000, 1118600, 35400],
+  ])("%s: 解説の収益・費用・当期純利益", (id, revenue, expense, net) => {
+    const s = STORIES.find((x) => x.id === id)!;
     const adj = adjustmentsUpTo(s, s.steps.length);
     const total = (side: "借" | "貸") => s.accounts.filter((a) => a.pl && a.side === side).reduce((t, a) => t + afterAmount(a, adj), 0);
-    expect([total("貸"), total("借"), netIncome(s)]).toEqual([1050000, 973000, 77000]);
+    expect([total("貸"), total("借"), netIncome(s)]).toEqual([revenue, expense, net]);
   });
 });

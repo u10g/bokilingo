@@ -4,12 +4,17 @@ import type { Story, StoryAccount } from "./types.ts";
    ストーリーの表の計算
    ステップ i に取り組んでいる間の表は、ステップ 0〜i-1 の修正記入を反映したもの。
    整理後 ＝ 試算表 ＋ 残高と同じ側の修正 − 反対側の修正
+
+   空欄は表の種類で変わる。
+     精算表（worksheet）           … そのステップの修正記入のマス
+     決算整理後残高試算表（adjustedTb）… そのステップで動いた科目の、整理後の残高（0になる科目も含む）
+   どちらも最後に当期純利益を求める。
 --------------------------------------------------------- */
 
 export type StoryCol = "dr" | "cr";
 
 export interface StorySlot {
-  key: string; // 「科目:dr」、当期純利益は NET_KEY
+  key: string; // 「科目:dr」「科目:after」、当期純利益は NET_KEY
   account: string;
   col: StoryCol | "after";
   answer: string;
@@ -58,6 +63,13 @@ export function stepSlots(story: Story, stepIndex: number): StorySlot[] {
   }
   const step = story.steps[stepIndex];
   if (!step) return [];
+  if (story.table === "adjustedTb") {
+    const adj = adjustmentsUpTo(story, stepIndex + 1);
+    return step.entries.map((e) => {
+      const account = story.accounts.find((a) => a.account === e.account);
+      return { key: `${e.account}:after`, account: e.account, col: "after" as const, answer: amountLabel(account ? afterAmount(account, adj) : 0) };
+    });
+  }
   return step.entries.flatMap((e) =>
     (["dr", "cr"] as const).filter((col) => e[col] !== undefined).map((col) => ({ key: `${e.account}:${col}`, account: e.account, col, answer: amountLabel(e[col]!) })),
   );
@@ -88,15 +100,17 @@ export function validateStory(story: Story): string[] {
     const dr = step.entries.reduce((t, e) => t + (e.dr ?? 0), 0);
     const cr = step.entries.reduce((t, e) => t + (e.cr ?? 0), 0);
     if (dr !== cr || dr === 0) errors.push(`${label}: 修正記入の借方 ${dr} と貸方 ${cr} が一致しない`);
+    const names = step.entries.map((e) => e.account);
+    if (new Set(names).size !== names.length) errors.push(`${label}: 同じ科目の行が2つある（借方・貸方は1行にまとめる）`);
     for (const e of step.entries) {
       if (!accounts.has(e.account)) errors.push(`${label}: 表にない科目 ${e.account}`);
       usedAccounts.add(e.account);
       for (const col of ["dr", "cr"] as const) {
         if (e[col] === undefined) continue;
         if (e[col]! <= 0) errors.push(`${label}: ${e.account} の金額が正でない`);
-        // 同じマスを2回埋めると、前のステップの値と見分けがつかないため1回まで
+        // 精算表では、同じマスを2回埋めると前のステップの値と見分けがつかないため1回まで
         const cell = `${e.account}:${col}`;
-        if (usedCells.has(cell)) errors.push(`${label}: ${cell} を2回以上使っている`);
+        if (usedCells.has(cell) && story.table === "worksheet") errors.push(`${label}: ${cell} を2回以上使っている`);
         usedCells.add(cell);
       }
     }

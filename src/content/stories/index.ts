@@ -1,4 +1,5 @@
 import type { Story } from "../../domain/types.ts";
+import { ADJUSTED_TB_STORY } from "./adjustedTb.ts";
 import { WORKSHEET_STORY } from "./worksheet.ts";
 
 /* ---------------------------------------------------------
@@ -6,4 +7,4 @@ import { WORKSHEET_STORY } from "./worksheet.ts";
    各ストーリーは topicId の論点のレッスンの直後に置かれる（両コース共通）。
 --------------------------------------------------------- */
 
-export const STORIES: Story[] = [WORKSHEET_STORY];
+export const STORIES: Story[] = [WORKSHEET_STORY, ADJUSTED_TB_STORY];

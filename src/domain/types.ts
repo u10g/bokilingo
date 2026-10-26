@@ -149,7 +149,9 @@ export interface StoryStep {
 export interface Story {
   id: string;
   topicId: string; // この論点のレッスンの直後に置く
-  table: "worksheet"; // 埋めていく表の種類
+  // 埋めていく表の種類。worksheet は精算表（修正記入を埋める）、
+  // adjustedTb は決算整理後残高試算表（影響を受けた科目の整理後の残高を埋める）
+  table: "worksheet" | "adjustedTb";
   title: string;
   intro: string;
   accounts: StoryAccount[];

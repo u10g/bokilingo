@@ -56,6 +56,18 @@ describe("ストーリーの表", () => {
     expect(stepSlots(story, 1)).toEqual([{ key: NET_KEY, account: "当期純利益", col: "after", answer: "190" }]);
   });
 
+  it("決算整理後残高試算表では、動いた科目の整理後の残高が空欄になる", () => {
+    const tb: Story = { ...story, table: "adjustedTb", steps: [{ ...story.steps[0], distractors: ["7", "8"] }] };
+    expect(stepSlots(tb, 0).map((s) => [s.key, s.answer])).toEqual([
+      ["貸倒引当金:after", "20"],
+      ["貸倒引当金繰入:after", "10"],
+    ]);
+    // 同じ科目を別のステップで再び動かしてもよい（精算表では不可）
+    const twice: Story = { ...tb, steps: [tb.steps[0], tb.steps[0]] };
+    expect(validateStory(twice)).toEqual([]);
+    expect(stepSlots(twice, 1).map((s) => s.answer)).toEqual(["30", "20"]);
+  });
+
   it("正しいデータには誤りがない", () => {
     expect(validateStory(story)).toEqual([]);
   });

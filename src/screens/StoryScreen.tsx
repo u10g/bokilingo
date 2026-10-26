@@ -2,7 +2,18 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Check, ScrollText, X } from "lucide-react";
 import { TokenBank, useTokenBank } from "../components/QuestionRenderer.tsx";
 import { PRAISE } from "../domain/constants.ts";
-import { adjustmentsUpTo, afterAmount, amountLabel, NET_KEY, NET_LABEL, stepChoices, stepSlots, visibleAccounts } from "../domain/story.ts";
+import {
+  adjustmentsUpTo,
+  afterAmount,
+  amountLabel,
+  NET_KEY,
+  NET_LABEL,
+  stepChoices,
+  stepSlots,
+  visibleAccounts,
+  type Adjustments,
+  type StorySlot,
+} from "../domain/story.ts";
 import type { Answer, JournalBlankAnswer, LessonResult, Story, StoryAccount } from "../domain/types.ts";
 
 /* ---------------------------------------------------------
@@ -127,7 +138,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
             {focus ? "表全体を見る" : isFinale ? "損益計算書の科目だけを見る" : "関係する行だけを見る"}
           </button>
         )}
-        <WorksheetTable
+        <StoryTable
           story={story}
           step={step}
           phase={phase}
@@ -141,14 +152,16 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
       <div className={`sticky bottom-0 z-10 px-5 py-4 border-t ${phase === "solved" ? "bg-green-50 border-green-100" : "bg-white border-gray-100"}`}>
         {phase === "read" && (
           <PanelButton onClick={() => (isIntro ? onNext(false) : setPhase("fill"))}>
-            {isIntro ? "はじめる" : isFinale ? "当期純利益を求める" : "修正記入を書く"}
+            {isIntro ? "はじめる" : isFinale ? "当期純利益を求める" : story.table === "adjustedTb" ? "残高を書き換える" : "修正記入を書く"}
           </PanelButton>
         )}
 
         {phase === "fill" && (
           <>
             <p className={`text-xs font-bold mb-2 ${wrongKeys.length ? "text-red-500" : "text-gray-400"}`} role="status">
-              {wrongKeys.length ? "赤いマスがちがいます。もう一度入れてみよう" : "空欄に金額を入れよう（入れたいマスをタップして選べます）"}
+              {wrongKeys.length
+                ? "赤いマスがちがいます。もう一度入れてみよう"
+                : `${story.table === "adjustedTb" && !isFinale ? "整理後の残高" : "空欄に金額"}を入れよう（入れたいマスをタップして選べます）`}
             </p>
             {tries >= 2 && <p className="text-xs text-gray-500 mb-2">ヒント：{explanation}</p>}
             <div className="mb-3">
@@ -192,9 +205,9 @@ function PanelButton({ onClick, disabled = false, children }: { onClick: () => v
 }
 
 /* ---------------------------------------------------------
-   精算表（試算表・修正記入・整理後の5列）
-   修正記入は、前のステップまでの分を記入済みで表示する。
-   整理後は、その時点までの修正を反映した金額。損益計算書の科目の行に色を付ける。
+   表の共通部分
+   追加の科目は、読んでいる間は出さず、穴埋めに入ったときに表に加える（答えの手がかりにしない）。
+   空欄が画面外に散らばらないよう、穴埋め中は関係する行（最後は損益計算書の科目）だけを出す。
 --------------------------------------------------------- */
 
 interface BankView {
@@ -204,50 +217,58 @@ interface BankView {
   handleSlotTap: (key: string) => void;
 }
 
-function WorksheetTable({
-  story,
-  step,
-  phase,
-  focus,
-  slots,
-  wrongKeys,
-  bank,
-}: {
+interface TableProps {
   story: Story;
   step: number;
   phase: Phase;
   focus: boolean;
-  slots: { key: string; answer: string }[];
+  slots: StorySlot[];
   wrongKeys: string[];
   bank: BankView;
-}) {
+}
+
+interface TableView {
+  rows: StoryAccount[];
+  before: Adjustments; // このステップの前までの修正
+  applied: Adjustments; // 表に反映している修正（正解後はこのステップを含む）
+  slotKeys: Set<string>;
+  touched: (a: StoryAccount) => boolean;
+  slotCell: (key: string) => ReactNode;
+  phase: Phase;
+  isFinale: boolean;
+  full: boolean; // 表全体を出しているか
+}
+
+const amount = (n: number) => (n ? amountLabel(n) : "");
+
+function StoryTable({ story, step, phase, focus, slots, wrongKeys, bank }: TableProps) {
   const isFinale = step === story.steps.length;
   const solved = phase === "solved";
   const before = adjustmentsUpTo(story, Math.max(0, step));
   const applied = solved ? adjustmentsUpTo(story, step + 1) : before;
-  // 追加の科目は、読んでいる間は出さず、穴埋めに入ったときに表に加える（答えの手がかりにしない）
   const all = visibleAccounts(story, phase === "read" ? step - 1 : step);
-  const slotKeys = new Set(phase === "read" ? [] : slots.map((s) => s.key));
-  const answerOf = (key: string) => slots.find((s) => s.key === key)?.answer ?? "";
-  const touched = (a: StoryAccount) => slotKeys.has(`${a.account}:dr`) || slotKeys.has(`${a.account}:cr`);
-  // 空欄が画面外に散らばらないよう、穴埋め中は関係する行（最後は損益計算書の科目）だけを出す
-  const rows = phase !== "read" && focus ? all.filter((a) => (isFinale ? a.pl : touched(a))) : all;
+  const active = phase === "read" ? [] : slots;
+  const slotKeys = new Set(active.map((s) => s.key));
+  const touchedAccounts = new Set(active.map((s) => s.account));
+  const touched = (a: StoryAccount) => touchedAccounts.has(a.account);
+  const full = phase === "read" || !focus;
+  const rows = full ? all : all.filter((a) => (isFinale ? a.pl : touched(a)));
 
   const slotCell = (key: string) => {
-    if (solved) return <span className="text-green-600 font-extrabold">{answerOf(key)}</span>;
+    if (solved) return <span className="text-green-600 font-extrabold">{slots.find((s) => s.key === key)?.answer}</span>;
     const token = bank.placed[key] ? bank.tokenById(bank.placed[key]) : null;
     const wrong = !token && wrongKeys.includes(key);
-    const active = !token && bank.targetKey() === key;
+    const current = !token && bank.targetKey() === key;
     return (
       <button
         data-story-slot
         onClick={() => bank.handleSlotTap(key)}
-        aria-label={`空欄 ${key.replace(":dr", " 借方").replace(":cr", " 貸方")}`}
+        aria-label={`空欄 ${key.replace(":dr", " 借方").replace(":cr", " 貸方").replace(":after", " 残高")}`}
         className={`w-full min-h-8 rounded-md font-extrabold tabular-nums transition-colors
           ${token ? "bg-sky-500 text-white" : "border-2 border-dashed"}
           ${wrong ? "border-red-400 bg-red-50 text-red-300" : ""}
-          ${!token && !wrong && active ? "border-sky-400 bg-sky-50 text-gray-300" : ""}
-          ${!token && !wrong && !active ? "border-gray-300 text-gray-300" : ""}
+          ${!token && !wrong && current ? "border-sky-400 bg-sky-50 text-gray-300" : ""}
+          ${!token && !wrong && !current ? "border-gray-300 text-gray-300" : ""}
         `}
       >
         {token ? token.label : "？"}
@@ -255,8 +276,20 @@ function WorksheetTable({
     );
   };
 
-  const amount = (n: number) => (n ? amountLabel(n) : "");
+  const view: TableView = { rows, before, applied, slotKeys, touched, slotCell, phase, isFinale, full };
+  return story.table === "worksheet" ? <WorksheetTable {...view} /> : <AdjustedTbTable {...view} />;
+}
 
+const rowTint = (highlight: boolean, a: StoryAccount) => (highlight ? "bg-sky-50" : a.pl ? "bg-amber-50/70" : "");
+
+/* ---------------------------------------------------------
+   精算表（試算表・修正記入・整理後の5列）
+   修正記入は、前のステップまでの分を記入済みで表示する。
+   整理後は、その時点までの修正を反映した金額。損益計算書の科目の行に色を付ける。
+--------------------------------------------------------- */
+
+function WorksheetTable({ rows, before, applied, slotKeys, touched, slotCell, phase, isFinale }: TableView) {
+  const solved = phase === "solved";
   return (
     <div className="border-2 border-gray-200 rounded-2xl overflow-hidden">
       <table className="w-full table-fixed text-[11px]">
@@ -280,9 +313,8 @@ function WorksheetTable({
           {rows.map((a) => {
             const prev = before.get(a.account) ?? { dr: 0, cr: 0 };
             const highlight = phase !== "read" && touched(a);
-            const after = afterAmount(a, applied);
             return (
-              <tr key={a.account} className={`border-t border-gray-200 ${highlight ? "bg-sky-50" : a.pl ? "bg-amber-50/70" : ""}`}>
+              <tr key={a.account} className={`border-t border-gray-200 ${rowTint(highlight, a)}`}>
                 <td className="px-1 py-1 font-bold text-gray-700 border-r border-gray-200 leading-tight break-words">
                   {a.account}
                   <span className="ml-0.5 text-[9px] text-gray-400">{a.side}</span>
@@ -297,7 +329,7 @@ function WorksheetTable({
                   );
                 })}
                 <td className={`px-0.5 py-1 text-right tabular-nums ${solved && highlight ? "text-amber-600 font-extrabold" : "text-gray-700 font-bold"}`}>
-                  {amount(after)}
+                  {amount(afterAmount(a, applied))}
                 </td>
               </tr>
             );
@@ -314,6 +346,79 @@ function WorksheetTable({
       </table>
       <p className="px-2 py-1.5 text-[10px] text-gray-400 border-t border-gray-200">
         色のついた行は損益計算書の科目。科目名の横の「借」「貸」は残高が出る側
+      </p>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   決算整理後残高試算表（借方・勘定科目・貸方の3列。本試験と同じ形）
+   動いた科目の残高を、その場で整理後の金額に書き換える。
+   残高が0になった科目は取り消し線で残し、表から消えたことが分かるようにする。
+   表全体を出しているときは合計の行を付ける（貸借が常に一致することを見せる）。
+--------------------------------------------------------- */
+
+function AdjustedTbTable({ rows, applied, slotKeys, touched, slotCell, phase, isFinale, full }: TableView) {
+  const solved = phase === "solved";
+  const total = (side: "借" | "貸") => rows.filter((a) => a.side === side).reduce((t, a) => t + afterAmount(a, applied), 0);
+
+  const cell = (a: StoryAccount, side: "借" | "貸", highlight: boolean) => {
+    if (a.side !== side) return null;
+    const key = `${a.account}:after`;
+    if (slotKeys.has(key)) return slotCell(key);
+    return <span className={highlight && solved ? "text-amber-600 font-extrabold" : ""}>{amount(afterAmount(a, applied))}</span>;
+  };
+
+  return (
+    <div className="border-2 border-gray-200 rounded-2xl overflow-hidden">
+      <table className="w-full table-fixed text-xs">
+        <colgroup>
+          <col className="w-[30%]" />
+          <col />
+          <col className="w-[30%]" />
+        </colgroup>
+        <thead className="bg-gray-100 text-gray-500">
+          <tr>
+            {["借方", "勘定科目", "貸方"].map((c) => (
+              <th key={c} className="px-1 py-1.5 font-extrabold border-r last:border-r-0 border-gray-200">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((a) => {
+            const highlight = phase !== "read" && touched(a);
+            const gone = !highlight && a.tb !== undefined && afterAmount(a, applied) === 0;
+            return (
+              <tr key={a.account} className={`border-t border-gray-200 ${rowTint(highlight, a)}`}>
+                <td className="px-1 py-1 text-right font-bold text-gray-700 border-r border-gray-200 tabular-nums">{cell(a, "借", highlight)}</td>
+                <td className={`px-1 py-1 text-center font-bold border-r border-gray-200 leading-tight break-words ${gone ? "line-through text-gray-300" : "text-gray-700"}`}>
+                  {a.account}
+                </td>
+                <td className="px-1 py-1 text-right font-bold text-gray-700 tabular-nums">{cell(a, "貸", highlight)}</td>
+              </tr>
+            );
+          })}
+          {full && !isFinale && (
+            <tr className="border-t-2 border-gray-300 bg-gray-50">
+              <td className="px-1 py-1 text-right font-extrabold text-gray-800 border-r border-gray-200 tabular-nums">{amount(total("借"))}</td>
+              <td className="px-1 py-1 text-center font-extrabold text-gray-800 border-r border-gray-200">合計</td>
+              <td className="px-1 py-1 text-right font-extrabold text-gray-800 tabular-nums">{amount(total("貸"))}</td>
+            </tr>
+          )}
+          {isFinale && (
+            <tr className="border-t-2 border-gray-300 bg-pink-50">
+              <td className="px-1 py-1 font-extrabold text-gray-800 border-r border-gray-200 text-center" colSpan={2}>
+                {NET_LABEL}
+              </td>
+              <td className="px-1 py-1 text-right tabular-nums">{phase === "read" ? "" : slotCell(NET_KEY)}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <p className="px-2 py-1.5 text-[10px] text-gray-400 border-t border-gray-200">
+        色のついた行は損益計算書の科目。取り消し線は、残高が0になって試算表から消えた科目
       </p>
     </div>
   );
