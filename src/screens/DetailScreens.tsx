@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Flame, Gem } from "lucide-react";
 import { DetailHeader } from "../components/parts.tsx";
+import { REVIEW_SIZE } from "../domain/course.ts";
 import { todayStr, type CompletedSets } from "../domain/progress.ts";
 import type { Course } from "../domain/types.ts";
 
@@ -98,7 +99,8 @@ export function ProgressDetailScreen({
       <div className="space-y-2">
         {courses.map((c) => {
           const set = completedSets[c.id];
-          const count = c.nodes.reduce((sum, n, i) => (set.has(i) ? sum + n.questions.length : sum), 0);
+          // セクション復習は出題候補の全体を持つため、実際に出す問題数で数える
+          const count = c.nodes.reduce((sum, n) => (set.has(n.id) ? sum + (n.kind === "review" ? Math.min(REVIEW_SIZE, n.questions.length) : n.questions.length) : sum), 0);
           return (
             <div key={c.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
               <span className="font-bold text-gray-600">{c.title}</span>

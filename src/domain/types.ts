@@ -78,16 +78,17 @@ export interface JournalBlankAnswer {
 
 export type Answer = string | null | JournalAnswer | JournalBlankAnswer;
 
-export type NodeKind = "concept" | "training" | "checkpoint";
+// classify: 5要素分類 / journal: 仕訳穴埋め / review: セクション復習（合格判定あり）
+export type NodeKind = "classify" | "journal" | "review";
 
 export interface LessonNode {
   id: string;
   title: string;
   kind: NodeKind;
-  chapter: string;
-  unit?: string;
+  chapter: string; // セクションID。値が変わった箇所でマップに見出しを差し込む
+  unit?: string; // 小項目（論点）名。値が変わった箇所で区切り線を差し込む
   desc: string;
-  questions: Question[];
+  questions: Question[]; // review は出題候補の全体。挑戦ごとに一部を選んで出す
 }
 
 export interface ChapterInfo {

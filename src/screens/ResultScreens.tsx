@@ -10,7 +10,7 @@ import type { LessonNode, LessonResult } from "../domain/types.ts";
 export function ClearScreen({ result, node, onContinue, onRetry }: { result: LessonResult; node: LessonNode; onContinue: () => void; onRetry: () => void }) {
   const accuracy = Math.round(((result.total - result.missed) / result.total) * 100);
   const xpEarned = result.total * XP_PER_QUESTION;
-  const isCheckpoint = node.kind === "checkpoint";
+  const isCheckpoint = node.kind === "review";
   const passed = accuracy >= PASS_RATE * 100;
   const failedCheckpoint = isCheckpoint && !passed;
 

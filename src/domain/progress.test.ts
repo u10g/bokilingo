@@ -41,9 +41,10 @@ describe("ライフ・進行", () => {
     expect(heartsFor(["a", "b", "c", "d", "e", "f"].map(wrong))).toBe(0);
   });
 
-  it("frontier は最初の未完了ノード", () => {
-    expect(findFrontier(5, new Set([0, 1, 3]))).toBe(2);
-    expect(findFrontier(3, new Set([0, 1, 2]))).toBe(3);
+  it("frontier は最初の未完了レッスン", () => {
+    const nodes = COURSES[0].nodes.slice(0, 4);
+    expect(findFrontier(nodes, new Set([nodes[0].id, nodes[1].id, nodes[3].id]))).toBe(2);
+    expect(findFrontier(nodes, new Set(nodes.map((n) => n.id)))).toBe(4);
   });
 });
 
@@ -59,7 +60,8 @@ describe("保存と復元", () => {
   it("保存→復元で内容が変わらない", () => {
     const p = restoreProgress(null, COURSES, today);
     p.activeCourseId = COURSES[1].id;
-    p.completedSets[COURSES[1].id] = new Set([0, 2]);
+    p.completedSets[COURSES[1].id] = new Set([COURSES[1].nodes[0].id, COURSES[1].nodes[2].id]);
+    p.missCounts = { q1: 2 };
     p.solvedCount = 12;
     p.totalXp = 120;
     p.streak = 3;
@@ -79,9 +81,10 @@ describe("保存と復元", () => {
     expect(p.streak).toBe(0);
   });
 
-  it("存在しないコースIDは標準コースにフォールバックし、範囲外のindexは捨てる", () => {
-    const p = restoreProgress({ activeCourseId: "removed", completedSets: { [COURSES[0].id]: [0, 99999, -1] } }, COURSES, today);
+  it("存在しないコースIDは標準コースにフォールバックし、存在しないレッスンIDは捨てる", () => {
+    const first = COURSES[0].nodes[0].id;
+    const p = restoreProgress({ activeCourseId: "removed", completedSets: { [COURSES[0].id]: [first, "removed:lesson"] } }, COURSES, today);
     expect(p.activeCourseId).toBe(COURSES[0].id);
-    expect([...p.completedSets[COURSES[0].id]]).toEqual([0]);
+    expect([...p.completedSets[COURSES[0].id]]).toEqual([first]);
   });
 });

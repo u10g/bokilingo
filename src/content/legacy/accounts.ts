@@ -1,4 +1,5 @@
-import type { ChapterInfo, ClassifyQuestion, Element, LessonNode } from "../domain/types.ts";
+import type { ChapterInfo, ClassifyQuestion, Element } from "../../domain/types.ts";
+import type { LegacyNode } from "./types.ts";
 
 /* ---------------------------------------------------------
    コース0（標準コース）: 勘定科目コース
@@ -28,7 +29,7 @@ function classifyQ(id: string, prompt: string, answer: Element, explanation: str
   return { id, format: "classify", prompt, answer, explanation };
 }
 
-export const ACCOUNTS_NODES: LessonNode[] = [
+export const ACCOUNTS_NODES: LegacyNode[] = [
   /* ===== CHAPTER A: 商品を仕入れて売る ===== */
   {
     id: "ac-a1", title: "商品を仕入れて売る", kind: "concept", chapter: "scA",

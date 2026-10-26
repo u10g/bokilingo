@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Header } from "./components/parts.tsx";
 import { COURSES } from "./content/courses.ts";
+import { pickReviewQuestions } from "./domain/course.ts";
 import { PASS_RATE, XP_PER_QUESTION, XP_PER_REVIEW } from "./domain/constants.ts";
 import {
   bumpStreak,
@@ -34,14 +35,15 @@ export default function App() {
   const [activeNodeIndex, setActiveNodeIndex] = useState<number | null>(null);
   const [sheetIndex, setSheetIndex] = useState<number | null>(null);
   const [lastResult, setLastResult] = useState<LessonResult | null>(null);
+  const [lessonQuestions, setLessonQuestions] = useState<Question[]>([]);
   const [attemptId, setAttemptId] = useState(0); // 挑戦ごとに出題順を引き直すためのキー
 
-  const { activeCourseId, completedSets, solvedCount, totalXp, streak, lastActiveDate, wrongToday } = progress;
+  const { activeCourseId, completedSets, solvedCount, totalXp, streak, lastActiveDate, wrongToday, missCounts } = progress;
   const hearts = heartsFor(wrongToday);
   const currentCourse = COURSES.find((c) => c.id === activeCourseId) ?? COURSES[0];
   const currentNodes = currentCourse.nodes;
   const currentCompletedSet = completedSets[currentCourse.id];
-  const frontier = findFrontier(currentNodes.length, currentCompletedSet);
+  const frontier = findFrontier(currentNodes, currentCompletedSet);
 
   // 初回読み込み：保存済みの進捗があれば復元する
   useEffect(() => {
@@ -70,19 +72,27 @@ export default function App() {
     void saveProgress(next);
   };
 
+  // セクション復習は、挑戦のたびに候補から出題する問題を選び直す
+  const questionsFor = (i: number) => {
+    const node = currentNodes[i];
+    return node.kind === "review" ? pickReviewQuestions(node.questions, missCounts) : node.questions;
+  };
+
   const handleStart = (i: number) => {
     setSheetIndex(null);
     setActiveNodeIndex(i);
+    setLessonQuestions(questionsFor(i));
     setAttemptId((n) => n + 1);
     setScreen("lesson");
   };
 
   const handleWrongAnswer = (question: Question, nodeTitle: string) => {
-    if (wrongToday.some((w) => w.key === question.id)) return;
+    const alreadyListed = wrongToday.some((w) => w.key === question.id);
     commit({
       ...progress,
-      wrongToday: [...wrongToday, { key: question.id, nodeTitle, question }],
+      wrongToday: alreadyListed ? wrongToday : [...wrongToday, { key: question.id, nodeTitle, question }],
       wrongTodayDate: todayStr(),
+      missCounts: { ...missCounts, [question.id]: (missCounts[question.id] ?? 0) + 1 },
     });
   };
 
@@ -106,14 +116,14 @@ export default function App() {
 
     const node = currentNodes[activeNodeIndex];
     const accuracy = (result.total - result.missed) / result.total;
-    // チェックポイントは合格ラインに届かないとクリア扱いにしない
-    const cleared = node.kind !== "checkpoint" || accuracy >= PASS_RATE;
+    // セクション復習は合格ラインに届かないとクリア扱いにしない
+    const cleared = node.kind !== "review" || accuracy >= PASS_RATE;
     const bumped = bumpStreak(streak, lastActiveDate, todayStr());
 
     commit({
       ...progress,
       completedSets: cleared
-        ? { ...completedSets, [currentCourse.id]: new Set(currentCompletedSet).add(activeNodeIndex) }
+        ? { ...completedSets, [currentCourse.id]: new Set(currentCompletedSet).add(node.id) }
         : completedSets,
       solvedCount: solvedCount + result.total,
       totalXp: totalXp + result.total * XP_PER_QUESTION,
@@ -128,9 +138,10 @@ export default function App() {
     setScreen("map");
   };
 
-  // チェックポイント不合格からの再挑戦
+  // セクション復習の不合格からの再挑戦
   const handleRetry = () => {
     setLastResult(null);
+    if (activeNodeIndex !== null) setLessonQuestions(questionsFor(activeNodeIndex));
     setAttemptId((n) => n + 1);
     setScreen("lesson");
   };
@@ -189,7 +200,7 @@ export default function App() {
       {screen === "lesson" && activeNodeIndex !== null && (
         <LessonScreen
           key={`${currentCourse.id}-${activeNodeIndex}-${attemptId}`}
-          node={currentNodes[activeNodeIndex]}
+          questions={lessonQuestions}
           hearts={hearts}
           onWrongAnswer={(q) => handleWrongAnswer(q, currentNodes[activeNodeIndex].title)}
           onExit={backToMap}

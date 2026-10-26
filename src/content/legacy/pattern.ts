@@ -1,4 +1,5 @@
-import type { ChapterInfo, LessonNode } from "../domain/types.ts";
+import type { ChapterInfo } from "../../domain/types.ts";
+import type { LegacyNode } from "./types.ts";
 
 /* ---------------------------------------------------------
    コース3: 思考パターン別コース
@@ -17,7 +18,7 @@ export const PATTERN_CHAPTERS: Record<string, ChapterInfo> = {
   pat3: { title: "パターン 3", subtitle: "一時的な勘定科目", bg: "bg-fuchsia-500", sub: "text-fuchsia-100" },
 };
 
-export const PATTERN_NODES: LessonNode[] = [
+export const PATTERN_NODES: LegacyNode[] = [
   {
     id: "pn1", title: "交換取引と損益取引を見分ける", kind: "concept", chapter: "pat1",
     desc: "収益・費用が発生するかどうかで取引を見分けます。",
