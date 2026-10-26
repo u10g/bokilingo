@@ -6,7 +6,7 @@
 
 import unittest
 
-from textfix import daimon_number, leading_marker, line_flags, normalize_line, parse_choices, split_questions
+from textfix import daimon_number, leading_marker, line_flags, match_question_no, normalize_line, parse_choices, split_questions
 
 
 class NormalizeTest(unittest.TestCase):
@@ -52,6 +52,21 @@ class HeadingTest(unittest.TestCase):
 
     def test_citation_is_not_heading(self):
         self.assertIsNone(daimon_number("(第150回第3問)"))
+
+
+class QuestionNoTest(unittest.TestCase):
+    def test_variants(self):
+        self.assertEqual(match_question_no("3.備品を購入した。", 3)[0], 3)
+        self.assertEqual(match_question_no("13,現金を引き出した。", 13)[0], 13)
+        self.assertEqual(match_question_no('9"決算日における', 9)[0], 9)
+        self.assertEqual(match_question_no("4.敷金が返金された。", 14)[0], 14)  # 先頭の1が欠けた
+        self.assertEqual(match_question_no("〇.出張から戻り", 10)[0], 10)
+        self.assertEqual(match_question_no("8.掛代金を回収した。", 7)[0], 8)  # 7を読み落とした
+
+    def test_rejects(self):
+        self.assertIsNone(match_question_no("1,250,000", 1))
+        self.assertIsNone(match_question_no("9月30日に支払った。", 9))
+        self.assertIsNone(match_question_no("5.前の設問の番号", 9))
 
 
 class FlagsTest(unittest.TestCase):
@@ -121,6 +136,10 @@ class SplitTest(unittest.TestCase):
         self.assertEqual(self.by_key[(2, 2, None)].cited, ["サンプル問題4"])
         self.assertEqual(self.by_key[(3, None, 1)].cited, ["第151回第3問"])
         self.assertEqual(self.by_key[(1, None, 1)].cited, [])
+
+    def test_missing_question_is_kept(self):
+        qs = split_questions([["第1問", "1.備品を購入した。", "3.土地を売却した。", "第2問"]])
+        self.assertEqual([(q.no, sorted(q.flags)) for q in qs if q.no], [(1, []), (2, ["missing"]), (3, [])])
 
     def test_stops_at_answers(self):
         self.assertFalse(any("(イ)" in q.prompt for q in self.qs))

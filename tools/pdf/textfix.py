@@ -111,8 +111,33 @@ DAIMON = re.compile(r"(?<![回\d])第\s*[^\d\s回]?\s*([1-5１-５IlⅠⅡⅢ])\
 # 「1.6月に…」は設問番号、「1.320,000」は金額。ピリオドの後に3桁が続くものは除く。
 # 区切りが読み落とされた「9消費税の…」も拾うが、「9月30日」のような日付は除く
 QUESTION_NO = re.compile(
-    r"^\s*(\d{1,2})\s*(?:[.．・\-]\s*(?!\d{3}|\d{1,2},\d{3})|(?=[^\d\s.,．、月日年か%％円]))"
+    r"^\s*(\d{1,2}|[〇O])\s*(?:[.．・\-,，\"”]\s*(?!\d{3}|\d{1,2},\d{3})|(?=[^\d\s.,．、月日年か%％円]))"
 )
+MAX_SKIP = 2  # 設問番号の読み落としを、この数まで飛ばして追従する
+
+
+def match_question_no(line: str, expected: int) -> tuple[int, int] | None:
+    """行頭の設問番号を読み、(設問番号, 番号の終わりの位置) を返す。
+
+    OCRの読み違いを補正する:
+      - 2桁の番号の先頭の「1」が落ちる（14. → 4.）
+      - 0 が 〇 になる（10. → 〇.）
+      - 1問まるごと読めない（7 が無く 8 から始まる）→ MAX_SKIP 問まで飛ばす
+    """
+    m = QUESTION_NO.match(line)
+    if not m:
+        return None
+    raw = m.group(1)
+    if raw in "〇O":
+        return (expected, m.end()) if expected % 10 == 0 else None
+    n = int(raw)
+    if expected <= n <= expected + MAX_SKIP:
+        return n, m.end()
+    if expected >= 10 and n == expected % 10:
+        return expected, m.end()
+    return None
+
+
 # 第2問の小問「(1)」「⑴」。⑴ は行頭にゴミが付くことがあるので行内のどこでも拾う
 SUB_NO = re.compile(r"^\s*[(（]\s*([1-3])\s*[)）]|([⑴⑵⑶])")
 CITED_EXAM = re.compile(r"第\s*(\d{2,3})\s*回\s*第\s*(\d)\s*問")
@@ -170,7 +195,7 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
 
     def flush() -> None:
         nonlocal cur
-        if cur and (cur.lines or cur.choices):
+        if cur and (cur.lines or cur.choices or cur.flags):
             out.append(cur)
         cur = None
 
@@ -213,12 +238,17 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
                 expected_no = 1
                 line = line[sm.end():]
 
-            m = QUESTION_NO.match(line)
-            if m and int(m.group(1)) == expected_no:
+            qm = match_question_no(line, expected_no)
+            if qm:
+                no, end = qm
                 flush()
-                cur = Question(daimon, expected_no, page_no, sub=cur.sub if cur else None)
-                expected_no += 1
-                line = line[m.end():]
+                sub_no = cur.sub if cur else None
+                # 読めなかった設問は、画像で確認できるよう欠落として残す
+                for missing in range(expected_no, no):
+                    out.append(Question(daimon, missing, page_no, sub=sub_no, flags={"missing"}))
+                cur = Question(daimon, no, page_no, sub=sub_no)
+                expected_no = no + 1
+                line = line[end:]
 
             if cur is None:
                 cur = Question(daimon, None, page_no)
