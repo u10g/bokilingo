@@ -786,21 +786,21 @@ export const JOURNAL_BLANK_NODES: LegacyNode[] = [
     questions: [
       {
         id: "jb12-q1", format: "journalBlank", blankSide: "credit",
-        prompt: "決算にあたり、建物の減価償却費¥90,000を計上した。なお、間接法で記帳している。",
+        prompt: "決算にあたり、建物（取得原価¥2,700,000）について、残存価額をゼロ、耐用年数を30年とする定額法により減価償却を行う。なお、間接法で記帳している。",
         rows: [{ debitAnswer: "減価償却費", debitAmount: 90000, creditAnswer: "減価償却累計額", creditAmount: 90000 }],
         choices: ["減価償却累計額", "建物", "備品", "固定資産売却損"],
-        explanation: "間接法では建物を直接減らさず、減価償却累計額に積み上げていきます。",
+        explanation: "2,700,000÷30年＝90,000円。間接法では建物を直接減らさず、減価償却累計額に積み上げていきます。",
       },
       {
         id: "jb12-q2", format: "journalBlank", blankSide: "debit",
-        prompt: "決算にあたり、備品の減価償却費¥50,000を計上した。なお、間接法で記帳している。",
+        prompt: "決算にあたり、備品（取得原価¥300,000）について、残存価額をゼロ、耐用年数を6年とする定額法により減価償却を行う。なお、間接法で記帳している。",
         rows: [{ debitAnswer: "減価償却費", debitAmount: 50000, creditAnswer: "減価償却累計額", creditAmount: 50000 }],
         choices: ["減価償却費", "修繕費", "固定資産売却損", "消耗品費"],
-        explanation: "その年の価値の減少分は減価償却費（費用）として借方に計上します。",
+        explanation: "300,000÷6年＝50,000円。その年の価値の減少分は減価償却費（費用）として借方に計上します。",
       },
       {
         id: "jb12-q3", format: "journalBlank", blankSide: "debit",
-        prompt: "備品（取得原価¥200,000、減価償却累計額¥120,000、間接法で記帳）を¥80,000で売却し、代金は現金で受け取った。",
+        prompt: "期首に、不要になった備品（取得原価¥200,000、減価償却累計額¥120,000、間接法で記帳）を¥80,000で売却し、代金は現金で受け取った。",
         rows: [
           { debitAnswer: "減価償却累計額", debitAmount: 120000, creditAnswer: "備品", creditAmount: 200000 },
           { debitAnswer: "現金", debitAmount: 80000, creditAnswer: null, creditAmount: 0 },
@@ -810,7 +810,7 @@ export const JOURNAL_BLANK_NODES: LegacyNode[] = [
       },
       {
         id: "jb12-q4", format: "journalBlank", blankSide: "debit",
-        prompt: "備品（取得原価¥200,000、減価償却累計額¥120,000、間接法で記帳）を¥60,000で売却し、代金は現金で受け取った。",
+        prompt: "期首に、不要になった備品（取得原価¥200,000、減価償却累計額¥120,000、間接法で記帳）を¥60,000で売却し、代金は現金で受け取った。",
         rows: [
           { debitAnswer: "減価償却累計額", debitAmount: 120000, creditAnswer: "備品", creditAmount: 200000 },
           { debitAnswer: "現金", debitAmount: 60000, creditAnswer: null, creditAmount: 0 },
@@ -828,7 +828,7 @@ export const JOURNAL_BLANK_NODES: LegacyNode[] = [
       },
       {
         id: "jb12-q6", format: "journalBlank", blankSide: "credit",
-        prompt: "備品（取得原価¥200,000、減価償却累計額¥160,000、間接法で記帳）を¥50,000で売却し、代金は現金で受け取った。",
+        prompt: "期首に、不要になった備品（取得原価¥200,000、減価償却累計額¥160,000、間接法で記帳）を¥50,000で売却し、代金は現金で受け取った。",
         rows: [
           { debitAnswer: "減価償却累計額", debitAmount: 160000, creditAnswer: "備品", creditAmount: 200000 },
           { debitAnswer: "現金", debitAmount: 50000, creditAnswer: "固定資産売却益", creditAmount: 10000 },
@@ -838,7 +838,7 @@ export const JOURNAL_BLANK_NODES: LegacyNode[] = [
       },
       {
         id: "jb12-q7", format: "journalBlank", blankSide: "debit",
-        prompt: "車両（取得原価¥500,000、減価償却累計額¥300,000、間接法で記帳）を¥150,000で売却し、代金は月末に受け取ることとした。",
+        prompt: "期首に、不要になった車両（取得原価¥500,000、減価償却累計額¥300,000、間接法で記帳）を¥150,000で売却し、代金は月末に受け取ることとした。",
         rows: [
           { debitAnswer: "減価償却累計額", debitAmount: 300000, creditAnswer: "車両運搬具", creditAmount: 500000 },
           { debitAnswer: "未収入金", debitAmount: 150000, creditAnswer: null, creditAmount: 0 },
@@ -862,10 +862,10 @@ export const JOURNAL_BLANK_NODES: LegacyNode[] = [
       },
       {
         id: "jb-f-c2", format: "journalBlank", blankSide: "credit",
-        prompt: "決算にあたり、備品の減価償却費¥40,000を計上した。なお、間接法で記帳している。",
+        prompt: "決算にあたり、備品（取得原価¥200,000）について、残存価額をゼロ、耐用年数を5年とする定額法により減価償却を行う。なお、間接法で記帳している。",
         rows: [{ debitAnswer: "減価償却費", debitAmount: 40000, creditAnswer: "減価償却累計額", creditAmount: 40000 }],
         choices: ["減価償却累計額", "備品", "建物", "固定資産売却損"],
-        explanation: "間接法では備品を直接減らさず、減価償却累計額に積み上げます。",
+        explanation: "200,000÷5年＝40,000円。間接法では備品を直接減らさず、減価償却累計額に積み上げます。",
       },
       {
         id: "jb-f-c3", format: "journalBlank", blankSide: "credit",
@@ -879,7 +879,7 @@ export const JOURNAL_BLANK_NODES: LegacyNode[] = [
       },
       {
         id: "jb-f-c4", format: "journalBlank", blankSide: "debit",
-        prompt: "備品（取得原価¥300,000、減価償却累計額¥180,000、間接法で記帳）を¥100,000で売却し、代金は現金で受け取った。",
+        prompt: "期首に、不要になった備品（取得原価¥300,000、減価償却累計額¥180,000、間接法で記帳）を¥100,000で売却し、代金は現金で受け取った。",
         rows: [
           { debitAnswer: "減価償却累計額", debitAmount: 180000, creditAnswer: "備品", creditAmount: 300000 },
           { debitAnswer: "現金", debitAmount: 100000, creditAnswer: null, creditAmount: 0 },

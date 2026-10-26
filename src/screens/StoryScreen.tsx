@@ -140,7 +140,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
       <div className="sticky top-0 z-10 bg-white px-4 pb-3">
         <div className="bg-pink-50 border border-pink-100 rounded-2xl px-4 py-3 flex gap-2">
           {isIntro ? <ScrollText className="w-5 h-5 text-pink-500 shrink-0 mt-0.5" /> : !isFinale && <span className="font-extrabold text-pink-500 shrink-0">{step + 1}.</span>}
-          <p className="text-sm font-bold text-gray-800 leading-relaxed">{text}</p>
+          <p className="text-sm font-bold text-gray-800 leading-relaxed whitespace-pre-line">{text}</p>
         </div>
       </div>
 
