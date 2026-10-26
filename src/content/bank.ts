@@ -4,6 +4,7 @@ import { ACCOUNTS_NODES } from "./legacy/accounts.ts";
 import { JOURNAL_BLANK_NODES } from "./legacy/journalBlank.ts";
 import { CLOSING_STATEMENT_QUESTIONS } from "./questions/closingStatements.ts";
 import { ELEMENT_QUESTIONS } from "./questions/elements.ts";
+import { PREVIEW_QUESTIONS } from "./questions/preview.ts";
 import { FREQUENT_QUESTIONS } from "./questions/frequent.ts";
 import { LEDGER_ENTRY_QUESTIONS } from "./questions/ledgerEntries.ts";
 import { NEW_TOPIC_QUESTIONS } from "./questions/newTopics.ts";
@@ -31,7 +32,7 @@ const LESSON_TOPIC: Record<string, string> = {
   "ac-e2": "rent",
   "ac-e3": "services",
   "ac-f1": "fixed-assets",
-  "ac-f2": "depreciation-entry",
+  "ac-f2": "depreciation-amount", // 減価償却のセクションの先頭で予習する
   "ac-g1": "bad-debts-writeoff",
   "ac-g2": "accruals-entry",
   "ac-g3": "closing",
@@ -81,9 +82,6 @@ const QUESTION_TOPIC: Record<string, string> = {
   "jb12-q1": "depreciation-entry",
   "jb12-q2": "depreciation-entry",
   "jb12-q5": "fixed-assets",
-  "ac-f2-7": "depreciation-sale",
-  "ac-f2-8": "depreciation-sale",
-  "ac-f2-9": "depreciation-sale",
   "ac-g2-1": "accruals-type",
   "ac-g2-2": "accruals-type",
   "ac-g2-3": "accruals-type",
@@ -117,7 +115,7 @@ function build(): BankEntry[] {
   return entries;
 }
 
-export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS, ...LEDGER_ENTRY_QUESTIONS, ...ELEMENT_QUESTIONS];
+export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS, ...LEDGER_ENTRY_QUESTIONS, ...ELEMENT_QUESTIONS, ...PREVIEW_QUESTIONS];
 
 export const QUESTION_BY_ID: Map<string, Question> = new Map(BANK.map((e) => [e.question.id, e.question]));
 
