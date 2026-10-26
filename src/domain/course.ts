@@ -72,7 +72,7 @@ function lessonsForTopic(courseId: string, sectionId: string, topic: TopicDef, e
       kind: "table",
       label: "帳簿・表",
       max: TABLE_LESSON_MAX,
-      qs: regular.filter((q) => q.format === "multiSelect" || q.format === "tableBlank"),
+      qs: regular.filter((q) => q.format === "multiSelect" || q.format === "tableBlank" || q.format === "ledgerAccount"),
     },
   ];
   return groups.flatMap((g) => {

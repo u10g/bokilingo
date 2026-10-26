@@ -3,6 +3,7 @@ import { ACCOUNTS_NODES } from "./legacy/accounts.ts";
 import { JOURNAL_BLANK_NODES } from "./legacy/journalBlank.ts";
 import { CLOSING_STATEMENT_QUESTIONS } from "./questions/closingStatements.ts";
 import { FREQUENT_QUESTIONS } from "./questions/frequent.ts";
+import { LEDGER_ENTRY_QUESTIONS } from "./questions/ledgerEntries.ts";
 import { NEW_TOPIC_QUESTIONS } from "./questions/newTopics.ts";
 import { TOPICS } from "./topics.ts";
 
@@ -97,7 +98,7 @@ function build(): BankEntry[] {
   return entries;
 }
 
-export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS];
+export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS, ...LEDGER_ENTRY_QUESTIONS];
 
 for (const e of BANK) {
   if (!TOPICS[e.topicId]) throw new Error(`未定義の論点 ${e.topicId}（${e.question.id}）`);

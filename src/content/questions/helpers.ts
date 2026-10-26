@@ -1,5 +1,13 @@
 import type { BankEntry } from "../../domain/course.ts";
-import type { JournalBlankQuestion, MultiSelectQuestion, Side, TableBlankQuestion, TableCell } from "../../domain/types.ts";
+import type {
+  JournalBlankQuestion,
+  LedgerAccountQuestion,
+  LedgerEntry,
+  MultiSelectQuestion,
+  Side,
+  TableBlankQuestion,
+  TableCell,
+} from "../../domain/types.ts";
 
 /* ---------------------------------------------------------
    問題を短く書くためのヘルパー
@@ -94,4 +102,53 @@ export function ws(
   });
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
   return tb(topicId, id, prompt, "精算表（一部）", WS_COLUMNS, tableRows, [...answers, ...distractors], explanation);
+}
+
+/* ---------------------------------------------------------
+   勘定記入（T勘定）の問題
+   借方合計と貸方合計が一致しない勘定は作れない（締め切れないため）。
+   blanks は空欄にするセルのキー：d0n（借方1行目の摘要）、c1a（貸方2行目の金額）、t（合計）
+--------------------------------------------------------- */
+
+export type LaEntry = [date: string, desc: string, amount: number];
+
+export function la(
+  topicId: string,
+  id: string,
+  prompt: string,
+  account: string,
+  debit: LaEntry[],
+  credit: LaEntry[],
+  blanks: string[],
+  distractors: string[],
+  explanation: string,
+): BankEntry {
+  const sum = (xs: LaEntry[]) => xs.reduce((t, [, , a]) => t + a, 0);
+  if (sum(debit) !== sum(credit)) throw new Error(`${id}: 借方合計 ${sum(debit)} と貸方合計 ${sum(credit)} が一致しない`);
+
+  const answers: string[] = [];
+  const cell = (key: string, value: string): TableCell => {
+    if (!blanks.includes(key)) return value;
+    answers.push(value);
+    return blank(value);
+  };
+  const side = (entries: LaEntry[], s: "d" | "c"): LedgerEntry[] =>
+    entries.map(([date, desc, amount], i) => ({ date, desc: cell(`${s}${i}n`, desc), amount: cell(`${s}${i}a`, yen(amount)) }));
+
+  const question: LedgerAccountQuestion = {
+    id,
+    format: "ledgerAccount",
+    prompt,
+    account,
+    debit: side(debit, "d"),
+    credit: side(credit, "c"),
+    total: cell("t", yen(sum(debit))),
+    choices: [],
+    explanation,
+  };
+  const unknown = blanks.filter((k) => k !== "t" && !/^[dc]\d+[na]$/.test(k));
+  if (unknown.length || answers.length !== blanks.length) throw new Error(`${id}: 空欄のキーが正しくない ${blanks.join(",")}`);
+  for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
+  question.choices = [...answers, ...distractors];
+  return { topicId, question };
 }

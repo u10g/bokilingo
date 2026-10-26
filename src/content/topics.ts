@@ -32,6 +32,7 @@ const list: TopicDef[] = [
   { id: "inventory-ledger", title: "商品有高帳", desc: "移動平均法・先入先出法による記入です。" },
   { id: "statements", title: "財務諸表のしくみ", desc: "貸借対照表・損益計算書と、利益の計算です。" },
   { id: "worksheet", title: "精算表", desc: "決算整理事項ごとに、修正記入と整理後の金額を求めます。" },
+  { id: "ledger-entry", title: "勘定記入", desc: "勘定に日付・摘要・金額を記入し、締め切ります。" },
   { id: "fs-preparation", title: "財務諸表の作成", desc: "決算整理後の金額を、貸借対照表・損益計算書に表示します。" },
 ];
 

@@ -31,7 +31,7 @@ const TAC: CourseDef = {
     { id: "s-ch10", title: "CHAPTER 10", subtitle: "決算手続I（精算表）", bg: "bg-lime-600", sub: "text-lime-100", topicIds: ["worksheet"] },
     { id: "s7", title: "CHAPTER 11 前半", subtitle: "決算手続II（振替・貸倒れ・減価償却）", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts", "depreciation"] },
     { id: "s8", title: "CHAPTER 11 後半", subtitle: "決算手続II（経過勘定・法人税等）", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["accruals", "corporate-tax"] },
-    { id: "s-ch12", title: "CHAPTER 12", subtitle: "決算手続III（財務諸表）", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["statements", "fs-preparation"] },
+    { id: "s-ch12", title: "CHAPTER 12", subtitle: "決算手続III（財務諸表・勘定の締め切り）", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["statements", "fs-preparation", "ledger-entry"] },
   ],
 };
 
@@ -52,7 +52,7 @@ const EXAM: CourseDef = {
     { id: "e6", title: "第2問・第3問 1", subtitle: "決算の振替と貸倒れ", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts"] },
     { id: "e7", title: "第2問・第3問 2", subtitle: "減価償却と経過勘定", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["depreciation", "accruals"] },
     { id: "e9", title: "第3問 決算", subtitle: "精算表と財務諸表の作成", bg: "bg-lime-600", sub: "text-lime-100", topicIds: ["worksheet", "fs-preparation"] },
-    { id: "e8", title: "第2問 帳簿と財務諸表", subtitle: "補助簿・商品有高帳・財務諸表", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["subledger", "inventory-ledger", "statements"] },
+    { id: "e8", title: "第2問 帳簿と財務諸表", subtitle: "勘定記入・補助簿・商品有高帳・財務諸表", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["ledger-entry", "subledger", "inventory-ledger", "statements"] },
   ],
 };
 

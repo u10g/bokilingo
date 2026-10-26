@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ACCOUNTS, ELEMENTS } from "../domain/constants.ts";
-import { journalSlots, shuffled, tableSlots, tokenId, type JournalSlot } from "../domain/questions.ts";
+import { journalSlots, ledgerSlots, shuffled, tableSlots, tokenId, type JournalSlot } from "../domain/questions.ts";
 import type {
   Answer,
   ClassifyQuestion,
@@ -10,10 +10,13 @@ import type {
   JournalBlankQuestion,
   JournalQuestion,
   JournalRow,
+  LedgerAccountQuestion,
+  LedgerEntry,
   MultiSelectQuestion,
   Question,
   Side,
   TableBlankQuestion,
+  TableCell,
   TwoChoiceQuestion,
 } from "../domain/types.ts";
 
@@ -344,6 +347,87 @@ function TableBlankView({ q, answer, setAnswer }: Props<TableBlankQuestion, Jour
 }
 
 /* ---------------------------------------------------------
+   勘定記入（T勘定）
+   本試験の勘定は「日付・摘要・金額」が左右に並び6列になるため、
+   各行を「日付・摘要」と「金額」の2段にして借方・貸方の2列に収める。
+--------------------------------------------------------- */
+
+function LedgerAccountView({ q, answer, setAnswer }: Props<LedgerAccountQuestion, JournalBlankAnswer>) {
+  const slots = ledgerSlots(q);
+  const { tokens, placed, usedIds, tokenById, targetKey, placeToken, handleSlotTap } = useTokenBank(q, slots, answer, setAnswer);
+  const multiSlot = slots.length > 1;
+
+  const renderCell = (cell: TableCell, key: string, className: string) => {
+    if (typeof cell === "string") return <span className={className}>{cell}</span>;
+    const token = placed[key] ? tokenById(placed[key]) : null;
+    const isActive = multiSlot && targetKey() === key;
+    return (
+      <button
+        onClick={() => handleSlotTap(key)}
+        aria-label={`空欄 ${key}`}
+        className={`min-w-16 min-h-7 px-1.5 rounded-lg text-xs font-extrabold tabular-nums transition-colors
+          ${token ? "bg-sky-500 text-white" : "border-2 border-dashed text-gray-300"}
+          ${!token && isActive ? "border-sky-400 bg-sky-50" : ""}
+          ${!token && !isActive ? "border-gray-300" : ""}
+        `}
+      >
+        {token ? token.label : "？"}
+      </button>
+    );
+  };
+
+  const renderSide = (entries: LedgerEntry[], side: "d" | "c") => (
+    <div className="flex-1 min-w-0">
+      {entries.map((e, i) => (
+        <div key={i} className="px-2 py-1.5 border-b border-dashed border-gray-200">
+          <div className="flex items-center gap-1 text-xs font-bold text-gray-500">
+            <span className="shrink-0 tabular-nums">{e.date}</span>
+            {renderCell(e.desc, `${side}${i}n`, "truncate text-gray-700")}
+          </div>
+          <div className="flex justify-end mt-0.5">{renderCell(e.amount, `${side}${i}a`, "text-sm font-extrabold text-gray-800 tabular-nums")}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <p className="text-sm text-gray-400 font-bold mb-2">
+        勘定の空欄を埋めよう
+        {multiSlot && <span className="ml-1 text-gray-300">（入れたい欄をタップして選べます）</span>}
+      </p>
+      <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+        <p className="text-base font-bold text-gray-800 whitespace-pre-line">{q.prompt}</p>
+      </div>
+
+      <div className="mb-6">
+        <p className="text-center font-extrabold text-gray-700 border-b-2 border-gray-700 pb-1">{q.account}</p>
+        <div className="flex text-xs font-extrabold text-gray-400">
+          <div className="flex-1 px-2 py-1">借方</div>
+          <div className="flex-1 px-2 py-1 text-right">貸方</div>
+        </div>
+        <div className="flex">
+          <div className="flex-1 flex border-r-2 border-gray-700 min-w-0">{renderSide(q.debit, "d")}</div>
+          <div className="flex-1 flex min-w-0">{renderSide(q.credit, "c")}</div>
+        </div>
+        {q.total !== undefined && (
+          <div className="flex border-t-4 border-double border-gray-700">
+            {[0, 1].map((i) => (
+              <div key={i} className={`flex-1 flex justify-between items-center px-2 py-1.5 ${i === 0 ? "border-r-2 border-gray-700" : ""}`}>
+                <span className="text-xs font-bold text-gray-400">合計</span>
+                {renderCell(q.total!, "t", "text-sm font-extrabold text-gray-800 tabular-nums")}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <TokenBank tokens={tokens} usedIds={usedIds} onPick={placeToken} />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
    複数選択（補助簿の選択など）
    当てはまるものをすべて選ぶ。もう一度押すと選択を外す。
 --------------------------------------------------------- */
@@ -383,6 +467,8 @@ export function QuestionRenderer({ q, answer, setAnswer }: { q: Question; answer
       return <TableBlankView q={q} answer={answer as JournalBlankAnswer} setAnswer={setAnswer} />;
     case "multiSelect":
       return <MultiSelectView q={q} answer={answer as string[]} setAnswer={setAnswer} />;
+    case "ledgerAccount":
+      return <LedgerAccountView q={q} answer={answer as JournalBlankAnswer} setAnswer={setAnswer} />;
     default: {
       const unreachable: never = q;
       return unreachable;

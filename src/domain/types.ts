@@ -72,6 +72,22 @@ export interface TableBlankQuestion extends QuestionBase {
   choices: string[];
 }
 
+// 勘定記入（T勘定）。摘要や金額の空欄を語群から埋める。第2問の勘定記入用
+export interface LedgerEntry {
+  date: string;
+  desc: TableCell; // 摘要（相手科目・前期繰越・次期繰越・損益 など）
+  amount: TableCell;
+}
+
+export interface LedgerAccountQuestion extends QuestionBase {
+  format: "ledgerAccount";
+  account: string; // 勘定科目名（T勘定の見出し）
+  debit: LedgerEntry[];
+  credit: LedgerEntry[];
+  total?: TableCell; // 締め切ったときの合計（借方・貸方で同額）
+  choices: string[];
+}
+
 export type Question =
   | ClassifyQuestion
   | TwoChoiceQuestion
@@ -79,7 +95,8 @@ export type Question =
   | JournalQuestion
   | JournalBlankQuestion
   | MultiSelectQuestion
-  | TableBlankQuestion;
+  | TableBlankQuestion
+  | LedgerAccountQuestion;
 
 export type Format = Question["format"];
 
@@ -91,7 +108,7 @@ export interface JournalAnswer {
   creditAmount: string;
 }
 
-// 仕訳穴埋め・表の穴埋めで共通の回答
+// 仕訳穴埋め・表の穴埋め・勘定記入で共通の回答
 export interface JournalBlankAnswer {
   // セルのキー（d0, c1, r2c3 など）→ 置いたトークンのID
   slots: Record<string, string>;
