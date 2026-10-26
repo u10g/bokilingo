@@ -3,6 +3,7 @@ import type { Question } from "../domain/types.ts";
 import { ACCOUNTS_NODES } from "./legacy/accounts.ts";
 import { JOURNAL_BLANK_NODES } from "./legacy/journalBlank.ts";
 import { CLOSING_STATEMENT_QUESTIONS } from "./questions/closingStatements.ts";
+import { ELEMENT_QUESTIONS } from "./questions/elements.ts";
 import { FREQUENT_QUESTIONS } from "./questions/frequent.ts";
 import { LEDGER_ENTRY_QUESTIONS } from "./questions/ledgerEntries.ts";
 import { NEW_TOPIC_QUESTIONS } from "./questions/newTopics.ts";
@@ -30,9 +31,9 @@ const LESSON_TOPIC: Record<string, string> = {
   "ac-e2": "rent",
   "ac-e3": "services",
   "ac-f1": "fixed-assets",
-  "ac-f2": "depreciation",
-  "ac-g1": "bad-debts",
-  "ac-g2": "accruals",
+  "ac-f2": "depreciation-entry",
+  "ac-g1": "bad-debts-writeoff",
+  "ac-g2": "accruals-entry",
   "ac-g3": "closing",
   "ac-h1": "consumption-tax",
   "ac-h2": "corporate-tax",
@@ -48,9 +49,9 @@ const LESSON_TOPIC: Record<string, string> = {
   jb9: "expenses",
   jb10: "rent",
   jb11: "fixed-assets",
-  jb12: "depreciation",
-  jb13: "bad-debts",
-  jb14: "accruals",
+  jb12: "depreciation-sale",
+  jb13: "bad-debts-writeoff",
+  jb14: "accruals-entry",
 };
 
 // 章末チェック → 出題するセクション復習の論点（章の先頭の論点）
@@ -61,7 +62,7 @@ const CHECKPOINT_TOPIC: Record<string, string> = {
   "ac-d-check": "payroll",
   "ac-e-check": "expenses",
   "ac-f-check": "fixed-assets",
-  "ac-g-check": "bad-debts",
+  "ac-g-check": "bad-debts-amount",
   "ac-h-check": "consumption-tax",
   "ac-i-check": "equity",
   "jb-a-check": "sales-basic",
@@ -70,13 +71,30 @@ const CHECKPOINT_TOPIC: Record<string, string> = {
   "jb-d-check": "payroll",
   "jb-e-check": "expenses",
   "jb-f-check": "fixed-assets",
-  "jb-g-check": "bad-debts",
+  "jb-g-check": "bad-debts-amount",
 };
 
-// レッスン単位の割り当てと異なる問題（売上原価と経過勘定が混在していたレッスン）
+// レッスン単位の割り当てと異なる問題（売上原価と経過勘定が混在していたレッスンと、減価償却・経過勘定・貸倒引当金を要素ごとに分けたもの）
 const QUESTION_TOPIC: Record<string, string> = {
   "jb14-q1": "closing",
   "jb14-q2": "closing",
+  "jb12-q1": "depreciation-entry",
+  "jb12-q2": "depreciation-entry",
+  "jb12-q5": "fixed-assets",
+  "ac-f2-7": "depreciation-sale",
+  "ac-f2-8": "depreciation-sale",
+  "ac-f2-9": "depreciation-sale",
+  "ac-g2-1": "accruals-type",
+  "ac-g2-2": "accruals-type",
+  "ac-g2-3": "accruals-type",
+  "ac-g2-4": "accruals-type",
+  "ac-g1-1": "bad-debts-entry",
+  "ac-g1-2": "bad-debts-entry",
+  "ac-g1-4": "bad-debts-entry",
+  "ac-g1-5": "bad-debts-recovery",
+  "jb13-q1": "bad-debts-entry",
+  "jb13-q5": "bad-debts-entry",
+  "jb13-q4": "bad-debts-recovery",
 };
 
 export const UNUSED_LEGACY_LESSONS = ["ac-mix1", "ac-mix2", "ac-check"];
@@ -99,7 +117,7 @@ function build(): BankEntry[] {
   return entries;
 }
 
-export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS, ...LEDGER_ENTRY_QUESTIONS];
+export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS, ...LEDGER_ENTRY_QUESTIONS, ...ELEMENT_QUESTIONS];
 
 export const QUESTION_BY_ID: Map<string, Question> = new Map(BANK.map((e) => [e.question.id, e.question]));
 

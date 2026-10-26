@@ -7,7 +7,7 @@ import type { Course, LessonNode, Question, Story } from "./types.ts";
    これにより、TAC順と頻度順の2コースで同じ問題を共有する。
 
    セクション内のレッスンは自動で組み立てる。
-     小項目（論点）ごとに 5要素分類 ×n → 仕訳穴埋め ×n → 帳簿・表 ×n → ストーリー（ある論点のみ）
+     小項目（論点）ごとに 5要素分類 ×n → 計算・判断 ×n → 仕訳穴埋め ×n → 帳簿・表 ×n → ストーリー（ある論点のみ）
      → セクション復習（正答率70%以上で合格）
 --------------------------------------------------------- */
 
@@ -41,6 +41,7 @@ export interface BankEntry {
 }
 
 export const CLASSIFY_LESSON_MAX = 10;
+export const DRILL_LESSON_MAX = 8; // 計算・判断（二択・選択穴埋め）
 export const JOURNAL_LESSON_MAX = 8; // 仕訳は1問の負荷が高いため少なめ
 export const TABLE_LESSON_MAX = 6; // 帳簿・表はさらに負荷が高い
 export const REVIEW_SIZE = 10;
@@ -59,14 +60,16 @@ const NUMBERS = "①②③④⑤⑥⑦⑧⑨⑩";
 
 const LESSON_DESC = {
   classify: "勘定科目が5要素のどれかを答えます。",
+  drill: "金額や月数を計算したり、正しいほうを選んだりします。",
   journal: "仕訳の空欄に勘定科目を入れます。",
   table: "帳簿や表の空欄を埋めたり、当てはまるものを選んだりします。",
 };
 
 function lessonsForTopic(courseId: string, sectionId: string, topic: TopicDef, entries: BankEntry[]): LessonNode[] {
   const regular = entries.filter((e) => !e.reviewOnly).map((e) => e.question);
-  const groups: { kind: "classify" | "journal" | "table"; label: string; max: number; qs: Question[] }[] = [
+  const groups: { kind: "classify" | "drill" | "journal" | "table"; label: string; max: number; qs: Question[] }[] = [
     { kind: "classify", label: "分類", max: CLASSIFY_LESSON_MAX, qs: regular.filter((q) => q.format === "classify") },
+    { kind: "drill", label: "計算・判断", max: DRILL_LESSON_MAX, qs: regular.filter((q) => q.format === "twochoice" || q.format === "fillblank") },
     { kind: "journal", label: "仕訳", max: JOURNAL_LESSON_MAX, qs: regular.filter((q) => q.format === "journalBlank") },
     {
       kind: "table",

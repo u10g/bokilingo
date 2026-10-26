@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ACCOUNTS } from "../domain/constants.ts";
 import { emptyAnswer, gradeAnswer, isAnswerReady, journalSlots, ledgerSlots, tableSlots, tokenId } from "../domain/questions.ts";
 import type { JournalBlankQuestion, Question } from "../domain/types.ts";
-import { CLASSIFY_LESSON_MAX, JOURNAL_LESSON_MAX, TABLE_LESSON_MAX } from "../domain/course.ts";
+import { CLASSIFY_LESSON_MAX, DRILL_LESSON_MAX, JOURNAL_LESSON_MAX, TABLE_LESSON_MAX } from "../domain/course.ts";
 import { BANK } from "./bank.ts";
 import { COURSES } from "./courses.ts";
 import { LEGACY_COURSES } from "./legacy/index.ts";
@@ -29,9 +29,9 @@ describe("問題バンク", () => {
     expect(dupes(allQuestions.map((x) => x.q.id))).toEqual([]);
   });
 
-  it("出題するのは 5要素分類・仕訳穴埋め・複数選択・表の穴埋め・勘定記入 だけ", () => {
+  it("出題するのは 5要素分類・二択・選択穴埋め・仕訳穴埋め・複数選択・表の穴埋め・勘定記入 だけ", () => {
     const formats = new Set(BANK.map((e) => e.question.format));
-    expect([...formats].sort()).toEqual(["classify", "journalBlank", "ledgerAccount", "multiSelect", "tableBlank"]);
+    expect([...formats].sort()).toEqual(["classify", "fillblank", "journalBlank", "ledgerAccount", "multiSelect", "tableBlank", "twochoice"]);
   });
 
   // 問題文の書き方は本試験にそろえる（docs/topic-map.md「問題文の構造」）
@@ -91,6 +91,10 @@ describe("コース構成", () => {
       if (n.kind === "classify") {
         expect(n.questions.every((q) => q.format === "classify"), n.id).toBe(true);
         expect(n.questions.length, n.id).toBeLessThanOrEqual(CLASSIFY_LESSON_MAX);
+      }
+      if (n.kind === "drill") {
+        expect(n.questions.every((q) => q.format === "twochoice" || q.format === "fillblank"), n.id).toBe(true);
+        expect(n.questions.length, n.id).toBeLessThanOrEqual(DRILL_LESSON_MAX);
       }
       if (n.kind === "journal") {
         expect(n.questions.every((q) => q.format === "journalBlank"), n.id).toBe(true);
