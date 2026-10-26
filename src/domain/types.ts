@@ -118,7 +118,46 @@ export type Answer = string | null | string[] | JournalAnswer | JournalBlankAnsw
 
 // classify: 5要素分類 / journal: 仕訳穴埋め / table: 帳簿・表（複数選択・表の穴埋め）
 // review: セクション復習（合格判定あり）
-export type NodeKind = "classify" | "journal" | "table" | "review";
+/* ---------------------------------------------------------
+   ストーリー（第3問の決算の流れ）
+   決算整理事項を1つずつ読み、表の修正記入を埋めていく。
+   1つのレッスンで1枚の表を完成させる。
+--------------------------------------------------------- */
+
+// 表の行。tb のない行は決算整理で追加される科目で、最初に使うステップから表に出す
+export interface StoryAccount {
+  account: string;
+  side: "借" | "貸"; // 残高が出る側
+  tb?: number; // 決算整理前残高試算表の金額
+  pl?: boolean; // 損益計算書の科目（収益・費用）
+}
+
+// 修正記入（＝決算整理仕訳）の1行
+export interface StoryEntry {
+  account: string;
+  dr?: number;
+  cr?: number;
+}
+
+export interface StoryStep {
+  item: string; // 決算整理事項（1行）
+  entries: StoryEntry[];
+  distractors: string[];
+  explanation: string;
+}
+
+export interface Story {
+  id: string;
+  topicId: string; // この論点のレッスンの直後に置く
+  table: "worksheet"; // 埋めていく表の種類
+  title: string;
+  intro: string;
+  accounts: StoryAccount[];
+  steps: StoryStep[];
+  finale: { distractors: string[]; explanation: string }; // 最後に当期純利益を求める
+}
+
+export type NodeKind = "classify" | "journal" | "table" | "story" | "review";
 
 export interface LessonNode {
   id: string;
@@ -127,7 +166,8 @@ export interface LessonNode {
   chapter: string; // セクションID。値が変わった箇所でマップに見出しを差し込む
   unit?: string; // 小項目（論点）名。値が変わった箇所で区切り線を差し込む
   desc: string;
-  questions: Question[]; // review は出題候補の全体。挑戦ごとに一部を選んで出す
+  questions: Question[]; // review は出題候補の全体。挑戦ごとに一部を選んで出す。story は空
+  story?: Story; // kind が story のときだけ持つ
 }
 
 export interface ChapterInfo {

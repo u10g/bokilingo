@@ -6,6 +6,7 @@ import { CLASSIFY_LESSON_MAX, JOURNAL_LESSON_MAX, TABLE_LESSON_MAX } from "../do
 import { BANK } from "./bank.ts";
 import { COURSES } from "./courses.ts";
 import { LEGACY_COURSES } from "./legacy/index.ts";
+import { STORIES } from "./stories/index.ts";
 import { TOPICS } from "./topics.ts";
 
 /* ---------------------------------------------------------
@@ -52,6 +53,14 @@ describe("コース構成", () => {
     expect(topicsInCourse.sort()).toEqual(Object.values(TOPICS).map((t) => t.title).sort());
   });
 
+  it.each(COURSES.map((c) => [c.id, c] as const))("%s: すべてのストーリーを、その論点のレッスンの直後に置く", (_, c) => {
+    for (const st of STORIES) {
+      const i = c.nodes.findIndex((n) => n.story?.id === st.id);
+      expect(i, st.id).toBeGreaterThan(0);
+      expect(c.nodes[i - 1].unit, st.id).toBe(TOPICS[st.topicId].title);
+    }
+  });
+
   it.each(COURSES.map((c) => [c.id, c] as const))("%s: 問題バンクの全問がどこかで出題される", (_, c) => {
     const inCourse = new Set(c.nodes.flatMap((n) => n.questions.map((q) => q.id)));
     expect(BANK.map((e) => e.question.id).filter((id) => !inCourse.has(id))).toEqual([]);
@@ -68,6 +77,10 @@ describe("コース構成", () => {
       expect(nodes.filter((n) => n.kind === "review")).toHaveLength(1);
     }
     for (const n of c.nodes) {
+      if (n.kind === "story") {
+        expect(n.story, n.id).toBeDefined();
+        continue;
+      }
       expect(n.questions.length, n.id).toBeGreaterThan(0);
       if (n.kind === "classify") {
         expect(n.questions.every((q) => q.format === "classify"), n.id).toBe(true);

@@ -1,6 +1,7 @@
 import { buildCourse, type CourseDef } from "../domain/course.ts";
 import type { Course } from "../domain/types.ts";
 import { BANK } from "./bank.ts";
+import { STORIES } from "./stories/index.ts";
 import { TOPICS } from "./topics.ts";
 
 /* ---------------------------------------------------------
@@ -58,4 +59,4 @@ const EXAM: CourseDef = {
 
 export const COURSE_DEFS: CourseDef[] = [TAC, EXAM];
 
-export const COURSES: Course[] = COURSE_DEFS.map((def) => buildCourse(def, TOPICS, BANK));
+export const COURSES: Course[] = COURSE_DEFS.map((def) => buildCourse(def, TOPICS, BANK, STORIES));
