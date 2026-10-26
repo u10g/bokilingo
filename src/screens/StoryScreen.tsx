@@ -6,15 +6,20 @@ import {
   adjustmentsUpTo,
   afterAmount,
   amountLabel,
+  lineAmount,
+  lineKey,
+  lineSection,
   NET_KEY,
   NET_LABEL,
   stepChoices,
   stepSlots,
   visibleAccounts,
+  visibleLines,
   type Adjustments,
+  type LineSection,
   type StorySlot,
 } from "../domain/story.ts";
-import type { Answer, JournalBlankAnswer, LessonResult, Story, StoryAccount } from "../domain/types.ts";
+import type { Answer, JournalBlankAnswer, LessonResult, Story, StoryAccount, StoryLine } from "../domain/types.ts";
 
 /* ---------------------------------------------------------
    ストーリー画面（第3問の決算の流れ）
@@ -83,6 +88,9 @@ export function StoryScreen({ story, onExit, onComplete }: { story: Story; onExi
 
 type Phase = "read" | "fill" | "solved";
 
+const READ_BUTTON: Record<Story["table"], string> = { worksheet: "修正記入を書く", adjustedTb: "残高を書き換える", statements: "財務諸表に反映する" };
+const FILL_HINT: Record<Story["table"], string> = { worksheet: "空欄に金額", adjustedTb: "整理後の残高", statements: "金額が変わった行に新しい金額" };
+
 function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext: (missed: boolean) => void }) {
   const isIntro = step < 0;
   const isFinale = step === story.steps.length;
@@ -120,7 +128,11 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
     setTries((n) => n + 1);
   };
 
-  const text = isIntro ? story.intro : isFinale ? "すべての決算整理が終わりました。整理後の金額から、当期純利益を求めましょう。" : story.steps[step].item;
+  const statements = story.table === "statements";
+  const finaleText = statements
+    ? "すべての決算整理が終わりました。損益計算書から当期純利益を求め、それを加えた繰越利益剰余金を求めましょう。"
+    : "すべての決算整理が終わりました。整理後の金額から、当期純利益を求めましょう。";
+  const text = isIntro ? story.intro : isFinale ? finaleText : story.steps[step].item;
   const explanation = isFinale ? story.finale.explanation : story.steps[step]?.explanation;
 
   return (
@@ -135,7 +147,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
       <div className="flex-1 px-3 pb-4">
         {phase !== "read" && (
           <button onClick={() => setFocus(!focus)} className="mb-2 text-xs font-extrabold text-sky-500">
-            {focus ? "表全体を見る" : isFinale ? "損益計算書の科目だけを見る" : "関係する行だけを見る"}
+            {focus ? "表全体を見る" : isFinale && !statements ? "損益計算書の科目だけを見る" : "関係する行だけを見る"}
           </button>
         )}
         <StoryTable
@@ -152,7 +164,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
       <div className={`sticky bottom-0 z-10 px-5 py-4 border-t ${phase === "solved" ? "bg-green-50 border-green-100" : "bg-white border-gray-100"}`}>
         {phase === "read" && (
           <PanelButton onClick={() => (isIntro ? onNext(false) : setPhase("fill"))}>
-            {isIntro ? "はじめる" : isFinale ? "当期純利益を求める" : story.table === "adjustedTb" ? "残高を書き換える" : "修正記入を書く"}
+            {isIntro ? "はじめる" : isFinale ? "当期純利益を求める" : READ_BUTTON[story.table]}
           </PanelButton>
         )}
 
@@ -161,7 +173,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
             <p className={`text-xs font-bold mb-2 ${wrongKeys.length ? "text-red-500" : "text-gray-400"}`} role="status">
               {wrongKeys.length
                 ? "赤いマスがちがいます。もう一度入れてみよう"
-                : `${story.table === "adjustedTb" && !isFinale ? "整理後の残高" : "空欄に金額"}を入れよう（入れたいマスをタップして選べます）`}
+                : `${isFinale ? "空欄に金額" : FILL_HINT[story.table]}を入れよう（入れたいマスをタップして選べます）`}
             </p>
             {tries >= 2 && <p className="text-xs text-gray-500 mb-2">ヒント：{explanation}</p>}
             <div className="mb-3">
@@ -263,7 +275,7 @@ function StoryTable({ story, step, phase, focus, slots, wrongKeys, bank }: Table
       <button
         data-story-slot
         onClick={() => bank.handleSlotTap(key)}
-        aria-label={`空欄 ${key.replace(":dr", " 借方").replace(":cr", " 貸方").replace(":after", " 残高")}`}
+        aria-label={`空欄 ${key.replace(":dr", " 借方").replace(":cr", " 貸方").replace(":after", " 残高").replace("line:", "")}`}
         className={`w-full min-h-8 rounded-md font-extrabold tabular-nums transition-colors
           ${token ? "bg-sky-500 text-white" : "border-2 border-dashed"}
           ${wrong ? "border-red-400 bg-red-50 text-red-300" : ""}
@@ -276,6 +288,9 @@ function StoryTable({ story, step, phase, focus, slots, wrongKeys, bank }: Table
     );
   };
 
+  if (story.table === "statements") {
+    return <StatementsTable story={story} step={step} phase={phase} full={full} applied={applied} slotKeys={slotKeys} touchedLabels={touchedAccounts} slotCell={slotCell} />;
+  }
   const view: TableView = { rows, before, applied, slotKeys, touched, slotCell, phase, isFinale, full };
   return story.table === "worksheet" ? <WorksheetTable {...view} /> : <AdjustedTbTable {...view} />;
 }
@@ -420,6 +435,107 @@ function AdjustedTbTable({ rows, applied, slotKeys, touched, slotCell, phase, is
       <p className="px-2 py-1.5 text-[10px] text-gray-400 border-t border-gray-200">
         色のついた行は損益計算書の科目。取り消し線は、残高が0になって試算表から消えた科目
       </p>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   財務諸表（損益計算書・貸借対照表を縦に並べる）
+   表示科目ごとに、含まれる科目の整理後の金額を合計して出す。
+   貸倒引当金・減価償却累計額は資産の部に△で、仮の科目は0になったら取り消し線で残す。
+   最後に、損益計算書の下に当期純利益、貸借対照表に当期純利益を加えた繰越利益剰余金を埋める。
+--------------------------------------------------------- */
+
+const STATEMENTS: { title: string; statement: StoryLine["statement"]; sections: LineSection[] }[] = [
+  { title: "損益計算書", statement: "PL", sections: ["費用", "収益"] },
+  { title: "貸借対照表", statement: "BS", sections: ["資産", "負債・純資産"] },
+];
+
+function StatementsTable({
+  story,
+  step,
+  phase,
+  full,
+  applied,
+  slotKeys,
+  touchedLabels,
+  slotCell,
+}: {
+  story: Story;
+  step: number;
+  phase: Phase;
+  full: boolean;
+  applied: Adjustments;
+  slotKeys: Set<string>;
+  touchedLabels: Set<string>;
+  slotCell: (key: string) => ReactNode;
+}) {
+  const isFinale = step === story.steps.length;
+  const all = visibleLines(story, phase === "read" ? step - 1 : step);
+  const shown = (l: StoryLine) => full || touchedLabels.has(l.label) || (isFinale && l.statement === "PL");
+
+  const row = (l: StoryLine) => {
+    const highlight = phase !== "read" && touchedLabels.has(l.label);
+    const key = lineKey(l);
+    const value = lineAmount(story, l, applied);
+    const gone = Boolean(l.temp) && value === 0 && !highlight;
+    return (
+      <tr key={l.label} className={`border-t border-gray-200 ${highlight ? "bg-sky-50" : ""}`}>
+        <td className={`py-1 pr-1 font-bold leading-tight break-words border-r border-gray-200 ${l.contra ? "pl-5 text-gray-500" : "pl-2"} ${gone ? "line-through text-gray-300" : "text-gray-700"}`}>
+          {l.label}
+          {l.temp && !gone && <span className="ml-1 text-[9px] text-gray-400">決算で消える</span>}
+        </td>
+        <td className="px-1 py-1 text-right font-bold text-gray-700 tabular-nums">
+          {slotKeys.has(key) ? slotCell(key) : value ? `${l.contra ? "△ " : ""}${amountLabel(value)}` : ""}
+        </td>
+      </tr>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      {STATEMENTS.map(({ title, statement, sections }) => {
+        const lines = all.filter((l) => l.statement === statement && shown(l));
+        if (lines.length === 0 && !(isFinale && statement === "PL")) return null;
+        return (
+          <div key={title} className="border-2 border-gray-200 rounded-2xl overflow-hidden">
+            <table className="w-full table-fixed text-xs">
+              <colgroup>
+                <col />
+                <col className="w-[38%]" />
+              </colgroup>
+              <thead>
+                <tr className="bg-gray-100 text-gray-600">
+                  <th className="px-2 py-1.5 text-left font-extrabold" colSpan={2}>
+                    {title}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sections.map((section) => {
+                  const inSection = lines.filter((l) => lineSection(story, l) === section);
+                  if (inSection.length === 0) return null;
+                  return [
+                    <tr key={section} className="border-t border-gray-200 bg-gray-50">
+                      <td className="px-2 py-0.5 text-[10px] font-extrabold text-gray-400" colSpan={2}>
+                        {section}
+                      </td>
+                    </tr>,
+                    ...inSection.map(row),
+                  ];
+                })}
+                {statement === "PL" && isFinale && (
+                  <tr className="border-t-2 border-gray-300 bg-pink-50">
+                    <td className="px-2 py-1 font-extrabold text-gray-800 border-r border-gray-200">{NET_LABEL}</td>
+                    <td className="px-1 py-1 text-right tabular-nums">{phase === "read" ? "" : slotCell(NET_KEY)}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+      <p className="px-1 text-[10px] text-gray-400">△は資産から差し引く金額。取り消し線は、決算整理で0になって財務諸表から消えた科目</p>
     </div>
   );
 }
