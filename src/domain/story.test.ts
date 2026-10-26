@@ -140,3 +140,42 @@ describe("勘定記入のストーリー", () => {
     expect(validateStory(ledgerStory)).toEqual([]);
   });
 });
+
+describe("商品有高帳のストーリー", () => {
+  const story: Story = {
+    id: "t-inv",
+    topicId: "t",
+    table: "inventory",
+    title: "",
+    intro: "",
+    accounts: [],
+    inventory: { method: "移動平均法", item: "A", txs: [["5/1", "前月繰越", 10, 100], ["5/5", "仕入", 30, 120], ["5/9", "売上", 20, 300]] },
+    steps: [
+      { item: "", entries: [], cells: [["残高", "p"], ["残高", "q"], ["受入", "a"]], distractors: ["1", "2"], explanation: "" },
+      { item: "", entries: [], cells: [["払出", "a"]], distractors: ["1", "2"], explanation: "" },
+    ],
+    finale: { distractors: ["1", "2"], explanation: "" },
+  };
+
+  it("空欄は、そのステップで増える行の指定したセル。行の順、残高は数量 → 金額 → 単価の順に並ぶ", () => {
+    expect(stepSlots(story, 0).map((s) => [s.key, s.answer])).toEqual([
+      ["inv:2:a", "3,600"],
+      ["inv:3:q", "40"],
+      ["inv:3:p", "115"],
+    ]);
+    expect(stepSlots(story, 1).map((s) => s.answer)).toEqual(["2,300"]);
+  });
+
+  it("最後は売上高・売上原価・売上総利益", () => {
+    expect(stepSlots(story, 2).map((s) => s.answer)).toEqual(["6,000", "2,300", "3,700"]);
+    expect(validateStory(story)).toEqual([]);
+  });
+
+  it("ない行の指定や、取引とステップの数のずれを見つける", () => {
+    const bad: Story = { ...story, steps: [{ ...story.steps[0], cells: [["払出", "a"]] }, story.steps[1], story.steps[1]] };
+    const errors = validateStory(bad);
+    expect(errors.some((e) => e.includes("払出の1行目がない"))).toBe(true);
+    expect(errors.some((e) => e.includes("合わない"))).toBe(true);
+  });
+});
+

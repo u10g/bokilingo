@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustmentsUpTo, afterAmount, netIncome, validateStory } from "../../domain/story.ts";
+import { adjustmentsUpTo, afterAmount, netIncome, stepSlots, validateStory } from "../../domain/story.ts";
 import { TOPICS } from "../topics.ts";
 import { STORIES } from "./index.ts";
 
@@ -12,7 +12,7 @@ describe("ストーリーのデータ", () => {
   it.each(STORIES.map((s) => [s.id, s] as const))("%s: 金額と選択肢に矛盾がない", (_, s) => {
     expect(TOPICS[s.topicId], s.topicId).toBeDefined();
     expect(validateStory(s)).toEqual([]);
-    if (s.table !== "ledger") expect(netIncome(s)).toBeGreaterThan(0);
+    if (s.table !== "ledger" && s.table !== "inventory") expect(netIncome(s)).toBeGreaterThan(0);
   });
 
   // 最後のステップの解説に書いた金額（収益・費用・当期純利益）が、計算と一致する
@@ -28,5 +28,29 @@ describe("ストーリーのデータ", () => {
     const adj = adjustmentsUpTo(s, s.steps.length);
     const total = (side: "借" | "貸") => s.accounts.filter((a) => a.pl && a.side === side).reduce((t, a) => t + afterAmount(a, adj), 0);
     expect([total("貸"), total("借"), netIncome(s)]).toEqual([revenue, expense, net]);
+  });
+
+  // 商品有高帳：各ステップの正解（解説に書いた金額と一致する）と、入力の順番
+  it.each([
+    ["story-inv-1", [
+      ["16,500", "50", "26,500", "530"],
+      ["550", "5,500", "21,000", "525"],
+      ["525", "15,750", "10", "5,250"],
+      ["525", "1,050", "6,300"],
+      ["14,980", "40", "21,280", "532"],
+      ["532", "13,300", "7,980"],
+      ["42,900", "28,000", "14,900"],
+    ]],
+    ["story-inv-2", [
+      ["12,800", "20", "40"],
+      ["20", "10", "3,200", "9,600"],
+      ["320", "1,600", "25", "8,000"],
+      ["9,900", "25", "30"],
+      ["25", "10", "3,300", "6,600"],
+      ["33,200", "20,500", "12,700"],
+    ]],
+  ] as const)("%s: 各ステップの正解", (id, expected) => {
+    const s = STORIES.find((x) => x.id === id)!;
+    expect(s.steps.map((_, i) => i).concat(s.steps.length).map((i) => stepSlots(s, i).map((x) => x.answer))).toEqual(expected);
   });
 });

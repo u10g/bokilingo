@@ -1,3 +1,5 @@
+import type { InvCol, InvMethod, InvSection, InvTx } from "./inventory.ts";
+
 /* ---------------------------------------------------------
    問題・レッスン・コースの型
    問題形式は format で判別する。形式を追加したら、
@@ -154,6 +156,16 @@ export interface StoryLedger {
   closing: { date: string; desc: string }; // 締切の行（次期繰越・次月繰越・損益）。金額は計算する
 }
 
+// 商品有高帳のストーリー。txs[0] は前月繰越（最初から記入済み）、txs[i+1] がステップ i の取引
+export interface StoryInventory {
+  method: InvMethod;
+  item: string; // 商品名（例：A商品）
+  txs: InvTx[];
+}
+
+// 商品有高帳のストーリーで空欄にするセル：[欄, 列, そのステップの同じ欄の何行目か]
+export type StoryInvCell = [section: InvSection, col: InvCol, nth?: number];
+
 // 修正記入（＝決算整理仕訳）の1行
 export interface StoryEntry {
   account: string;
@@ -164,6 +176,7 @@ export interface StoryEntry {
 export interface StoryStep {
   item: string; // 決算整理事項・取引（1行）
   date?: string; // 勘定記入（ledger）で、T勘定の日付欄に出す日付（例：4/1）
+  cells?: StoryInvCell[]; // 商品有高帳（inventory）で空欄にするセル
   entries: StoryEntry[];
   distractors: string[];
   explanation: string;
@@ -175,15 +188,17 @@ export interface Story {
   // 埋めていく表の種類。worksheet は精算表（修正記入を埋める）、
   // adjustedTb は決算整理後残高試算表（影響を受けた科目の整理後の残高を埋める）、
   // statements は財務諸表（金額が変わった表示科目の行を埋める。lines が必要）、
-  // ledger は勘定記入（1つの勘定に、取引ごとの摘要と金額を記入して締め切る。ledger が必要）
-  table: "worksheet" | "adjustedTb" | "statements" | "ledger";
+  // ledger は勘定記入（1つの勘定に、取引ごとの摘要と金額を記入して締め切る。ledger が必要）、
+  // inventory は商品有高帳（取引ごとに受入・払出・残高を記入し、最後に売上総利益を求める。inventory が必要）
+  table: "worksheet" | "adjustedTb" | "statements" | "ledger" | "inventory";
   lines?: StoryLine[];
   ledger?: StoryLedger;
+  inventory?: StoryInventory;
   title: string;
   intro: string;
   accounts: StoryAccount[];
   steps: StoryStep[];
-  finale: { distractors: string[]; explanation: string }; // 最後に当期純利益を求める
+  finale: { distractors: string[]; explanation: string }; // 最後に当期純利益（勘定記入は締切、商品有高帳は売上総利益）を求める
 }
 
 export type NodeKind = "classify" | "journal" | "table" | "story" | "review";
