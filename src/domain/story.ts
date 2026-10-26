@@ -1,3 +1,4 @@
+import { cellOrder, inventoryRows, inventorySummary, type InvRow } from "./inventory.ts";
 import type { Story, StoryAccount, StoryLine } from "./types.ts";
 
 /* ---------------------------------------------------------
@@ -143,8 +144,62 @@ export function ledgerClosing(story: Story): { side: "dr" | "cr"; amount: number
   return dr >= cr ? { side: "cr", amount: dr - cr, total: dr } : { side: "dr", amount: cr - dr, total: cr };
 }
 
+/* ---------------------------------------------------------
+   商品有高帳（inventory）
+   ステップ i で記入するのは、取引 txs[i+1] で増える行（受入・払出・残高）。
+   空欄はステップごとに cells で指定する。最後に売上高・売上原価・売上総利益を求める。
+--------------------------------------------------------- */
+
+export const SUMMARY_KEYS = [
+  { key: "sum:sales", label: "売上高" },
+  { key: "sum:cost", label: "売上原価" },
+  { key: "sum:gross", label: "売上総利益" },
+] as const;
+
+// 取引を n 件目（前月繰越を含めて n+1 件）まで記入したときの全行
+export function inventoryRowsUpTo(story: Story, n: number): InvRow[] {
+  const inv = story.inventory;
+  return inv ? inventoryRows(inv.method, inv.txs.slice(0, n + 1)) : [];
+}
+
+// ステップ i で増える行の範囲（全行の中の位置）
+export function inventoryStepRange(story: Story, stepIndex: number): { start: number; end: number } {
+  return { start: inventoryRowsUpTo(story, stepIndex).length, end: inventoryRowsUpTo(story, stepIndex + 1).length };
+}
+
+export const invCellKey = (row: number, col: string) => `inv:${row}:${col}`;
+
+function inventorySlots(story: Story, stepIndex: number): StorySlot[] {
+  const inv = story.inventory;
+  if (!inv) return [];
+  if (stepIndex === story.steps.length) {
+    const { sales, cost } = inventorySummary(inv.method, inv.txs);
+    const values = [sales, cost, sales - cost];
+    return SUMMARY_KEYS.map((k, i) => ({ key: k.key, account: k.label, col: "after" as const, answer: amountLabel(values[i]) }));
+  }
+  const rows = inventoryRowsUpTo(story, stepIndex + 1);
+  const { start } = inventoryStepRange(story, stepIndex);
+  const stepRows = rows.slice(start);
+  const picked = new Map<number, string[]>();
+  for (const [section, col, nth = 0] of story.steps[stepIndex]?.cells ?? []) {
+    const hits = stepRows.map((r, i) => [r, start + i] as const).filter(([r]) => r.section === section);
+    const hit = hits[nth];
+    if (!hit) throw new Error(`${story.id} ステップ${stepIndex + 1}: ${section}の${nth + 1}行目がない`);
+    picked.set(hit[1], [...(picked.get(hit[1]) ?? []), col]);
+  }
+  // 行の順に、行の中は入力の順番（移動平均法の残高は数量 → 金額 → 単価）で並べる
+  return [...picked.keys()]
+    .sort((a, b) => a - b)
+    .flatMap((ri) =>
+      cellOrder(inv.method, rows[ri])
+        .filter((c) => picked.get(ri)!.includes(c))
+        .map((c) => ({ key: invCellKey(ri, c), account: `inv:${ri}`, col: "after" as const, answer: amountLabel(rows[ri][c]) })),
+    );
+}
+
 // ステップの空欄。最後のステップ（steps.length）は当期純利益
 export function stepSlots(story: Story, stepIndex: number): StorySlot[] {
+  if (story.table === "inventory") return inventorySlots(story, stepIndex);
   if (story.table === "ledger") {
     if (stepIndex === story.steps.length) {
       const c = ledgerClosing(story);
@@ -198,6 +253,7 @@ export function stepChoices(story: Story, stepIndex: number): string[] {
 
 export function validateStory(story: Story): string[] {
   if (story.table === "ledger") return validateLedger(story);
+  if (story.table === "inventory") return validateInventory(story);
   const errors: string[] = [];
   const accounts = new Map(story.accounts.map((a) => [a.account, a]));
   if (accounts.size !== story.accounts.length) errors.push("科目が重複している");
@@ -300,6 +356,39 @@ function validateLedger(story: Story): string[] {
     if (answers.length === 0) continue;
     for (const d of distractors) if (answers.includes(d)) errors.push(`ステップ${i + 1}: ダミーの選択肢 ${d} が正解と重なっている`);
     if (distractors.length < 2) errors.push(`ステップ${i + 1}: ダミーの選択肢が2つ未満`);
+  }
+  return errors;
+}
+
+// 商品有高帳のストーリーの検証：取引の数とステップの数、帳簿の計算（割り切れるか・在庫が足りるか）、空欄の指定
+function validateInventory(story: Story): string[] {
+  const inv = story.inventory;
+  if (!inv) return ["商品有高帳のストーリーに inventory がない"];
+  const errors: string[] = [];
+  if (inv.txs[0]?.[1] !== "前月繰越") errors.push("最初の取引が前月繰越でない");
+  if (inv.txs.length !== story.steps.length + 1) errors.push(`取引 ${inv.txs.length - 1} 件とステップ ${story.steps.length} 件が合わない`);
+  try {
+    inventoryRows(inv.method, inv.txs);
+  } catch (e) {
+    return [...errors, `帳簿が計算できない：${(e as Error).message}`];
+  }
+  const { sales, cost } = inventorySummary(inv.method, inv.txs);
+  if (sales - cost <= 0) errors.push("売上総利益が0以下");
+  for (let i = 0; i <= story.steps.length; i++) {
+    const label = `ステップ${i + 1}`;
+    let slots: StorySlot[];
+    try {
+      slots = stepSlots(story, i);
+    } catch (e) {
+      errors.push((e as Error).message);
+      continue;
+    }
+    if (slots.length === 0) errors.push(`${label}: 空欄がない`);
+    if (new Set(slots.map((x) => x.key)).size !== slots.length) errors.push(`${label}: 同じセルを2回空欄にしている`);
+    const answers = slots.map((x) => x.answer);
+    const distractors = i === story.steps.length ? story.finale.distractors : story.steps[i].distractors;
+    for (const d of distractors) if (answers.includes(d)) errors.push(`${label}: ダミーの選択肢 ${d} が正解と重なっている`);
+    if (distractors.length < 2) errors.push(`${label}: ダミーの選択肢が2つ未満`);
   }
   return errors;
 }

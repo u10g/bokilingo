@@ -10,10 +10,14 @@ import {
   lineKey,
   lineSection,
   CLOSE_KEY,
+  invCellKey,
+  inventoryRowsUpTo,
+  inventoryStepRange,
   ledgerClosing,
   ledgerPostings,
   NET_KEY,
   NET_LABEL,
+  SUMMARY_KEYS,
   TOTAL_KEY,
   stepChoices,
   stepSlots,
@@ -97,18 +101,28 @@ const READ_BUTTON: Record<Story["table"], string> = {
   adjustedTb: "残高を書き換える",
   statements: "財務諸表に反映する",
   ledger: "勘定に記入する",
+  inventory: "帳簿に記入する",
 };
 const FILL_HINT: Record<Story["table"], string> = {
   worksheet: "空欄に金額",
   adjustedTb: "整理後の残高",
   statements: "金額が変わった行に新しい金額",
   ledger: "摘要と金額",
+  inventory: "数量・単価・金額",
 };
 const FINALE_TEXT: Record<Story["table"], string> = {
   worksheet: "すべての決算整理が終わりました。整理後の金額から、当期純利益を求めましょう。",
   adjustedTb: "すべての決算整理が終わりました。整理後の金額から、当期純利益を求めましょう。",
   statements: "すべての決算整理が終わりました。損益計算書から当期純利益を求め、それを加えた繰越利益剰余金を求めましょう。",
   ledger: "すべての取引を記入しました。最後に、勘定を締め切りましょう。",
+  inventory: "今月の取引をすべて記入しました。最後に、売上高・売上原価・売上総利益を求めましょう。",
+};
+const FINALE_BUTTON: Record<Story["table"], string> = {
+  worksheet: "当期純利益を求める",
+  adjustedTb: "当期純利益を求める",
+  statements: "当期純利益を求める",
+  ledger: "締め切る",
+  inventory: "売上総利益を求める",
 };
 
 function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext: (missed: boolean) => void }) {
@@ -150,6 +164,8 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
 
   const statements = story.table === "statements";
   const ledger = story.table === "ledger";
+  // 勘定記入・商品有高帳は表が1つなので、行をしぼる切り替えはない
+  const singleBook = ledger || story.table === "inventory";
   // 勘定に関係しない取引（勘定記入のひっかけ）は空欄がない。読んだら、記入しないことを解説で確かめる
   const nothingToFill = !isIntro && slots.length === 0;
   const text = isIntro ? story.intro : isFinale ? FINALE_TEXT[story.table] : story.steps[step].item;
@@ -165,7 +181,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
       </div>
 
       <div className="flex-1 px-3 pb-4">
-        {phase !== "read" && !ledger && (
+        {phase !== "read" && !singleBook && (
           <button onClick={() => setFocus(!focus)} className="mb-2 text-xs font-extrabold text-sky-500">
             {focus ? "表全体を見る" : isFinale && !statements ? "損益計算書の科目だけを見る" : "関係する行だけを見る"}
           </button>
@@ -184,7 +200,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
       <div className={`sticky bottom-0 z-10 px-5 py-4 border-t ${phase === "solved" ? "bg-green-50 border-green-100" : "bg-white border-gray-100"}`}>
         {phase === "read" && (
           <PanelButton onClick={() => (isIntro ? onNext(false) : setPhase(nothingToFill ? "solved" : "fill"))}>
-            {isIntro ? "はじめる" : isFinale ? (ledger ? "締め切る" : "当期純利益を求める") : nothingToFill ? "記入するか確かめる" : READ_BUTTON[story.table]}
+            {isIntro ? "はじめる" : isFinale ? FINALE_BUTTON[story.table] : nothingToFill ? "記入するか確かめる" : READ_BUTTON[story.table]}
           </PanelButton>
         )}
 
@@ -308,6 +324,9 @@ function StoryTable({ story, step, phase, focus, slots, wrongKeys, bank }: Table
     );
   };
 
+  if (story.table === "inventory") {
+    return <InventoryStoryTable story={story} step={step} phase={phase} slotKeys={slotKeys} slotCell={slotCell} />;
+  }
   if (story.table === "ledger") {
     return <LedgerStoryTable story={story} step={step} phase={phase} slotKeys={slotKeys} slotCell={slotCell} />;
   }
@@ -648,6 +667,84 @@ function LedgerStoryTable({
         <div className="flex border-t-4 border-double border-gray-700 items-center">
           <div className="flex-1 px-2 py-1.5 text-xs font-bold text-gray-500">合計</div>
           <div className="w-28 px-2 py-1.5 text-right text-sm font-extrabold tabular-nums">{slotCell(TOTAL_KEY)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   商品有高帳（日付・摘要／欄／数量／単価／金額）
+   前のステップまでの行は記入済み。いまの取引の行は、読んでいる間は出さず、穴埋めに入ったら空欄つきで出す。
+   最後に、売上高・売上原価・売上総利益の表を出す。
+--------------------------------------------------------- */
+
+function InventoryStoryTable({
+  story,
+  step,
+  phase,
+  slotKeys,
+  slotCell,
+}: {
+  story: Story;
+  step: number;
+  phase: Phase;
+  slotKeys: Set<string>;
+  slotCell: (key: string) => ReactNode;
+}) {
+  const inv = story.inventory!;
+  const isFinale = step === story.steps.length;
+  const rows = inventoryRowsUpTo(story, phase === "read" || isFinale ? Math.max(0, step) : step + 1);
+  const current = !isFinale && phase !== "read" ? inventoryStepRange(story, step) : { start: -1, end: -1 };
+  const cell = (ri: number, c: "q" | "p" | "a") => {
+    const key = invCellKey(ri, c);
+    return slotKeys.has(key) ? slotCell(key) : amountLabel(rows[ri][c]);
+  };
+
+  return (
+    <div>
+      <p className="text-xs font-extrabold text-gray-400 mb-1">
+        商品有高帳（{inv.method}）{inv.item}
+      </p>
+      <div className="rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full table-fixed text-xs">
+          <thead className="bg-gray-50 text-gray-500">
+            <tr>
+              <th className="w-[22%] px-1 py-1.5 font-extrabold">日付・摘要</th>
+              <th className="w-[12%] px-1 py-1.5 font-extrabold">欄</th>
+              <th className="px-1 py-1.5 font-extrabold">数量</th>
+              <th className="px-1 py-1.5 font-extrabold">単価</th>
+              <th className="w-[25%] px-1 py-1.5 font-extrabold">金額</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, ri) => {
+              const first = ri === 0 || rows[ri - 1].date !== r.date || rows[ri - 1].kind !== r.kind;
+              const isCurrent = ri >= current.start && ri < current.end;
+              return (
+                <tr key={ri} className={`border-t border-gray-100 ${isCurrent ? "bg-sky-50" : ""}`}>
+                  <td className="px-1 py-1.5 font-bold text-gray-600 text-center leading-tight">{first ? `${r.date} ${r.kind}` : ""}</td>
+                  <td className="px-1 py-1.5 font-bold text-gray-500 text-center">{r.section}</td>
+                  {(["q", "p", "a"] as const).map((c) => (
+                    <td key={c} className="px-1 py-1 text-center font-extrabold text-gray-800 tabular-nums">
+                      {cell(ri, c)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {isFinale && phase !== "read" && (
+        <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+          {SUMMARY_KEYS.map((k) => (
+            <div key={k.key} className="flex items-center border-t first:border-t-0 border-gray-100 px-3 py-1.5">
+              <span className="flex-1 text-sm font-bold text-gray-700">{k.label}</span>
+              <span className="w-32 text-right text-sm font-extrabold tabular-nums">{slotCell(k.key)}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
