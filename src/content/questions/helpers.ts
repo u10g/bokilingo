@@ -1,5 +1,6 @@
 import type { BankEntry } from "../../domain/course.ts";
 import type {
+  FillBlankQuestion,
   JournalBlankQuestion,
   LedgerAccountQuestion,
   LedgerEntry,
@@ -7,6 +8,7 @@ import type {
   Side,
   TableBlankQuestion,
   TableCell,
+  TwoChoiceQuestion,
 } from "../../domain/types.ts";
 import { cellOrder, inventoryRows, inventorySummary, returnNote, txLine, type InvCol, type InvMethod, type InvSection, type InvTx } from "../../domain/inventory.ts";
 
@@ -30,6 +32,18 @@ export function jb(topicId: string, id: string, blankSide: Side, prompt: string,
     choices,
     explanation,
   };
+  return { topicId, question };
+}
+
+// 選択穴埋め：prompt の空欄（全角の角かっこ）に入るものを options から1つ選ぶ。正解は options の先頭に書き、表示の順番は画面で入れ替える
+export function fb(topicId: string, id: string, prompt: string, options: string[], explanation: string): BankEntry {
+  const question: FillBlankQuestion = { id, format: "fillblank", prompt, options, answer: options[0], explanation };
+  return { topicId, question };
+}
+
+// 二択：正解を先に書く
+export function tc(topicId: string, id: string, prompt: string, options: [string, string], explanation: string): BankEntry {
+  const question: TwoChoiceQuestion = { id, format: "twochoice", prompt, options, answer: options[0], explanation };
   return { topicId, question };
 }
 

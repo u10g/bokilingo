@@ -19,9 +19,17 @@ const list: TopicDef[] = [
   { id: "rent", title: "土地・建物の賃借", desc: "家賃・地代と敷金です。" },
   { id: "services", title: "サービスのやりとり", desc: "手数料・保険料・利息・商品券です。" },
   { id: "fixed-assets", title: "固定資産の購入と売却", desc: "建物・備品・土地の取得と売却です。" },
-  { id: "depreciation", title: "減価償却", desc: "固定資産の価値の減少を費用にします。" },
+  { id: "depreciation-amount", title: "減価償却① 年額", desc: "定額法で、1年分の減価償却費を計算します。" },
+  { id: "depreciation-monthly", title: "減価償却② 月割", desc: "期中に取得した固定資産の、当期分の月数と金額です。" },
+  { id: "depreciation-entry", title: "減価償却③ 間接法の仕訳", desc: "減価償却費と減価償却累計額で記帳します。" },
+  { id: "depreciation-sale", title: "減価償却④ 帳簿価額と売却", desc: "帳簿価額を求め、売却損益を判断します。" },
+  { id: "depreciation-midyear", title: "減価償却⑤ 期中売却", desc: "当期分の減価償却費を月割で計上してから売却します。" },
   { id: "bad-debts", title: "貸倒れと貸倒引当金", desc: "回収できない債権への備えです。" },
-  { id: "accruals", title: "経過勘定", desc: "費用・収益の前払い・前受け・未払い・未収です。" },
+  { id: "accruals-type", title: "経過勘定① 4つの分類", desc: "前払費用・前受収益・未払費用・未収収益のどれかを判断します。" },
+  { id: "accruals-account", title: "経過勘定② 勘定科目", desc: "前払保険料・未払利息など、計上する勘定科目です。" },
+  { id: "accruals-months", title: "経過勘定③ 月数と金額", desc: "支払日・受取日から決算日までの月数を数えて月割します。" },
+  { id: "accruals-entry", title: "経過勘定④ 決算整理仕訳", desc: "決算で経過勘定を計上する仕訳です。" },
+  { id: "accruals-reversal", title: "経過勘定⑤ 再振替", desc: "期首に、経過勘定を元の勘定へ戻す仕訳です。" },
   { id: "closing", title: "売上原価と決算の振替", desc: "売上原価の算定と、決算での振替です。" },
   { id: "consumption-tax", title: "消費税", desc: "仮払消費税・仮受消費税の処理です。" },
   { id: "corporate-tax", title: "法人税等", desc: "法人税・住民税及び事業税の処理です。" },
@@ -37,3 +45,15 @@ const list: TopicDef[] = [
 ];
 
 export const TOPICS: Record<string, TopicDef> = Object.fromEntries(list.map((t) => [t.id, t]));
+
+/* ---------------------------------------------------------
+   本試験の分析で使う論点のまとまり
+   減価償却と経過勘定はアプリでは要素ごとの小項目に分けているが、
+   参考書の集計（tools/pdf・docs/data/tags.csv）では1つの論点として数える。
+   tools/pdf はこのファイルの { id, title } を読むので、ここにも同じ形で書いておく。
+--------------------------------------------------------- */
+
+export const ANALYSIS_TOPICS: TopicDef[] = [
+  { id: "depreciation", title: "減価償却", desc: "depreciation-* の小項目をまとめたもの。" },
+  { id: "accruals", title: "経過勘定", desc: "accruals-* の小項目をまとめたもの。" },
+];

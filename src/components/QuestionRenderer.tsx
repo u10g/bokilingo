@@ -52,7 +52,11 @@ function ClassifyView({ q, answer, setAnswer }: Props<ClassifyQuestion, string |
   );
 }
 
+// 選択肢は毎回並び順を変える（問題データでは正解を先頭に書いている）。同じ問題を解いている間は固定する
+const useShuffledOptions = (q: { options: string[] }) => useMemo(() => shuffled(q.options), [q]);
+
 function TwoChoiceView({ q, answer, setAnswer }: Props<TwoChoiceQuestion, string | null>) {
+  const options = useShuffledOptions(q);
   return (
     <div>
       <p className="text-sm text-gray-400 font-bold mb-2">正しいのはどっち？</p>
@@ -60,7 +64,7 @@ function TwoChoiceView({ q, answer, setAnswer }: Props<TwoChoiceQuestion, string
         <p className="text-lg font-extrabold text-gray-800">{q.prompt}</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {q.options.map((opt) => (
+        {options.map((opt) => (
           <button key={opt} onClick={() => setAnswer(opt)} className={`py-4 ${choiceCls(answer === opt)}`}>
             {opt}
           </button>
@@ -72,6 +76,7 @@ function TwoChoiceView({ q, answer, setAnswer }: Props<TwoChoiceQuestion, string
 
 function FillBlankView({ q, answer, setAnswer }: Props<FillBlankQuestion, string | null>) {
   const [before, after] = q.prompt.split("［　］");
+  const options = useShuffledOptions(q);
   return (
     <div>
       <p className="text-sm text-gray-400 font-bold mb-2">空欄を埋めよう</p>
@@ -83,7 +88,7 @@ function FillBlankView({ q, answer, setAnswer }: Props<FillBlankQuestion, string
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {q.options.map((opt) => (
+        {options.map((opt) => (
           <button key={opt} onClick={() => setAnswer(opt)} className={`py-3 ${choiceCls(answer === opt)}`}>
             {opt}
           </button>

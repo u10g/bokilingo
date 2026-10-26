@@ -413,7 +413,9 @@ def render_stats(rows: list[dict], topics: dict[str, str]) -> str:
             rank, prev = i, len(rs)
         out.append(f"| {rank} | {topics[topic]} | {topic} | {len(rs)} | {', '.join(lab(r) for r in sorted(rs, key=by_kai))} |")
     for topic in topics:
-        if topic not in dict(freq) and topic not in FORMAT_TOPICS:
+        # アプリで要素ごとに分けた小項目（depreciation-amount など）は、まとめた論点（depreciation）で数える
+        sub = any(topic.startswith(f"{p}-") for p in topics)
+        if topic not in dict(freq) and topic not in FORMAT_TOPICS and not sub:
             out.append(f"| — | {topics[topic]} | {topic} | 0 | |")
 
     out += ["", "### 第3問（決算整理事項）の出題回数", "", "| 論点 | ID | 回数 | 出題回 |", "|---|---|---|---|"]

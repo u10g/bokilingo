@@ -121,7 +121,7 @@ export interface JournalBlankAnswer {
 
 export type Answer = string | null | string[] | JournalAnswer | JournalBlankAnswer;
 
-// classify: 5要素分類 / journal: 仕訳穴埋め / table: 帳簿・表（複数選択・表の穴埋め）
+// classify: 5要素分類 / drill: 計算・判断（二択・選択穴埋め） / journal: 仕訳穴埋め / table: 帳簿・表（複数選択・表の穴埋め）
 // review: セクション復習（合格判定あり）
 /* ---------------------------------------------------------
    ストーリー（第3問の決算の流れ）
@@ -201,7 +201,7 @@ export interface Story {
   finale: { distractors: string[]; explanation: string }; // 最後に当期純利益（勘定記入は締切、商品有高帳は売上総利益）を求める
 }
 
-export type NodeKind = "classify" | "journal" | "table" | "story" | "review";
+export type NodeKind = "classify" | "drill" | "journal" | "table" | "story" | "review";
 
 export interface LessonNode {
   id: string;
