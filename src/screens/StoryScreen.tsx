@@ -472,7 +472,13 @@ function StatementsTable({
 }) {
   const isFinale = step === story.steps.length;
   const all = visibleLines(story, phase === "read" ? step - 1 : step);
-  const shown = (l: StoryLine) => full || touchedLabels.has(l.label) || (isFinale && l.statement === "PL");
+  // △の行だけでは何から差し引くのか分からないため、関係する行だけを出すときも直前の資産の行を一緒に出す
+  const defined = story.lines ?? [];
+  const parentOfTouchedContra = new Set(
+    defined.flatMap((l, i) => (l.contra && touchedLabels.has(l.label) && i > 0 ? [defined[i - 1].label] : [])),
+  );
+  const shown = (l: StoryLine) =>
+    full || touchedLabels.has(l.label) || parentOfTouchedContra.has(l.label) || (isFinale && l.statement === "PL");
 
   const row = (l: StoryLine) => {
     const highlight = phase !== "read" && touchedLabels.has(l.label);
@@ -482,7 +488,7 @@ function StatementsTable({
     return (
       <tr key={l.label} className={`border-t border-gray-200 ${highlight ? "bg-sky-50" : ""}`}>
         <td className={`py-1 pr-1 font-bold leading-tight break-words border-r border-gray-200 ${l.contra ? "pl-5 text-gray-500" : "pl-2"} ${gone ? "line-through text-gray-300" : "text-gray-700"}`}>
-          {l.label}
+          {l.display ?? l.label}
           {l.temp && !gone && <span className="ml-1 text-[9px] text-gray-400">決算で消える</span>}
         </td>
         <td className="px-1 py-1 text-right font-bold text-gray-700 tabular-nums">
