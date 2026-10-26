@@ -276,9 +276,11 @@ export function la(
   blanks: string[],
   distractors: string[],
   explanation: string,
+  opts: { open?: boolean } = {}, // open: 締め切る前の途中の勘定（合計欄を出さず、貸借の一致も求めない）
 ): BankEntry {
   const sum = (xs: LaEntry[]) => xs.reduce((t, [, , a]) => t + a, 0);
-  if (sum(debit) !== sum(credit)) throw new Error(`${id}: 借方合計 ${sum(debit)} と貸方合計 ${sum(credit)} が一致しない`);
+  if (!opts.open && sum(debit) !== sum(credit)) throw new Error(`${id}: 借方合計 ${sum(debit)} と貸方合計 ${sum(credit)} が一致しない`);
+  if (opts.open && blanks.includes("t")) throw new Error(`${id}: 締め切る前の勘定に合計の空欄は置けない`);
 
   const answers: string[] = [];
   const cell = (key: string, value: string): TableCell => {
@@ -307,7 +309,7 @@ export function la(
     account,
     debit: side(debit, "d"),
     credit: side(credit, "c"),
-    total: cell("t", yen(sum(debit))),
+    total: opts.open ? undefined : cell("t", yen(sum(debit))),
     choices: [],
     explanation,
   };

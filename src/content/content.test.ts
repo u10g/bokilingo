@@ -253,8 +253,11 @@ describe("勘定記入（ledgerAccount）", () => {
 
     // 借方合計＝貸方合計＝合計欄（空欄は正解で埋めて計算する）
     const sum = (es: typeof q.debit) => es.reduce((t, e) => t + num(text(e.amount)), 0);
-    expect(sum(q.debit)).toBe(sum(q.credit));
-    if (q.total !== undefined) expect(num(text(q.total))).toBe(sum(q.debit));
+    // 締め切った勘定（合計欄あり）は借方合計＝貸方合計＝合計欄。途中の勘定は合計欄を出さない
+    if (q.total !== undefined) {
+      expect(sum(q.debit)).toBe(sum(q.credit));
+      expect(num(text(q.total))).toBe(sum(q.debit));
+    }
 
     // 同じ語の空欄が複数ある勘定（再振替と見越しの相手科目など）では、その数だけ同じ選択肢を置く
     const count = (xs: string[]) => xs.reduce<Record<string, number>>((m, x) => ({ ...m, [x]: (m[x] ?? 0) + 1 }), {});

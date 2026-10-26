@@ -9,8 +9,12 @@ import {
   lineAmount,
   lineKey,
   lineSection,
+  CLOSE_KEY,
+  ledgerClosing,
+  ledgerPostings,
   NET_KEY,
   NET_LABEL,
+  TOTAL_KEY,
   stepChoices,
   stepSlots,
   visibleAccounts,
@@ -88,8 +92,24 @@ export function StoryScreen({ story, onExit, onComplete }: { story: Story; onExi
 
 type Phase = "read" | "fill" | "solved";
 
-const READ_BUTTON: Record<Story["table"], string> = { worksheet: "修正記入を書く", adjustedTb: "残高を書き換える", statements: "財務諸表に反映する" };
-const FILL_HINT: Record<Story["table"], string> = { worksheet: "空欄に金額", adjustedTb: "整理後の残高", statements: "金額が変わった行に新しい金額" };
+const READ_BUTTON: Record<Story["table"], string> = {
+  worksheet: "修正記入を書く",
+  adjustedTb: "残高を書き換える",
+  statements: "財務諸表に反映する",
+  ledger: "勘定に記入する",
+};
+const FILL_HINT: Record<Story["table"], string> = {
+  worksheet: "空欄に金額",
+  adjustedTb: "整理後の残高",
+  statements: "金額が変わった行に新しい金額",
+  ledger: "摘要と金額",
+};
+const FINALE_TEXT: Record<Story["table"], string> = {
+  worksheet: "すべての決算整理が終わりました。整理後の金額から、当期純利益を求めましょう。",
+  adjustedTb: "すべての決算整理が終わりました。整理後の金額から、当期純利益を求めましょう。",
+  statements: "すべての決算整理が終わりました。損益計算書から当期純利益を求め、それを加えた繰越利益剰余金を求めましょう。",
+  ledger: "すべての取引を記入しました。最後に、勘定を締め切りましょう。",
+};
 
 function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext: (missed: boolean) => void }) {
   const isIntro = step < 0;
@@ -129,10 +149,10 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
   };
 
   const statements = story.table === "statements";
-  const finaleText = statements
-    ? "すべての決算整理が終わりました。損益計算書から当期純利益を求め、それを加えた繰越利益剰余金を求めましょう。"
-    : "すべての決算整理が終わりました。整理後の金額から、当期純利益を求めましょう。";
-  const text = isIntro ? story.intro : isFinale ? finaleText : story.steps[step].item;
+  const ledger = story.table === "ledger";
+  // 勘定に関係しない取引（勘定記入のひっかけ）は空欄がない。読んだら、記入しないことを解説で確かめる
+  const nothingToFill = !isIntro && slots.length === 0;
+  const text = isIntro ? story.intro : isFinale ? FINALE_TEXT[story.table] : story.steps[step].item;
   const explanation = isFinale ? story.finale.explanation : story.steps[step]?.explanation;
 
   return (
@@ -145,7 +165,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
       </div>
 
       <div className="flex-1 px-3 pb-4">
-        {phase !== "read" && (
+        {phase !== "read" && !ledger && (
           <button onClick={() => setFocus(!focus)} className="mb-2 text-xs font-extrabold text-sky-500">
             {focus ? "表全体を見る" : isFinale && !statements ? "損益計算書の科目だけを見る" : "関係する行だけを見る"}
           </button>
@@ -163,8 +183,8 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
 
       <div className={`sticky bottom-0 z-10 px-5 py-4 border-t ${phase === "solved" ? "bg-green-50 border-green-100" : "bg-white border-gray-100"}`}>
         {phase === "read" && (
-          <PanelButton onClick={() => (isIntro ? onNext(false) : setPhase("fill"))}>
-            {isIntro ? "はじめる" : isFinale ? "当期純利益を求める" : READ_BUTTON[story.table]}
+          <PanelButton onClick={() => (isIntro ? onNext(false) : setPhase(nothingToFill ? "solved" : "fill"))}>
+            {isIntro ? "はじめる" : isFinale ? (ledger ? "締め切る" : "当期純利益を求める") : nothingToFill ? "記入するか確かめる" : READ_BUTTON[story.table]}
           </PanelButton>
         )}
 
@@ -190,7 +210,7 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
             <div className="mb-3" role="status">
               <p className="font-extrabold flex items-center gap-2 text-green-600">
                 <Check className="w-5 h-5" />
-                {tries === 0 ? praise : "できた！"}
+                {nothingToFill ? "この勘定には記入しません" : tries === 0 ? praise : "できた！"}
               </p>
               <p className="text-sm text-gray-500 mt-1">{explanation}</p>
             </div>
@@ -288,6 +308,9 @@ function StoryTable({ story, step, phase, focus, slots, wrongKeys, bank }: Table
     );
   };
 
+  if (story.table === "ledger") {
+    return <LedgerStoryTable story={story} step={step} phase={phase} slotKeys={slotKeys} slotCell={slotCell} />;
+  }
   if (story.table === "statements") {
     return <StatementsTable story={story} step={step} phase={phase} full={full} applied={applied} slotKeys={slotKeys} touchedLabels={touchedAccounts} slotCell={slotCell} />;
   }
@@ -542,6 +565,91 @@ function StatementsTable({
         );
       })}
       <p className="px-1 text-[10px] text-gray-400">△は資産から差し引く金額。取り消し線は、決算整理で0になって財務諸表から消えた科目</p>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   勘定記入（T勘定）
+   前期繰越は最初から記入済み。取引を読むごとに、その取引の行（日付・摘要・金額）を書き足す。
+   空欄は摘要と金額。最後に締切の行（次期繰越・損益など）の金額と合計を埋める。
+--------------------------------------------------------- */
+
+interface TRow {
+  date: string;
+  desc: ReactNode;
+  amount: ReactNode;
+}
+
+function LedgerStoryTable({
+  story,
+  step,
+  phase,
+  slotKeys,
+  slotCell,
+}: {
+  story: Story;
+  step: number;
+  phase: Phase;
+  slotKeys: Set<string>;
+  slotCell: (key: string) => ReactNode;
+}) {
+  const ledger = story.ledger!;
+  const isFinale = step === story.steps.length;
+  const rows: Record<"dr" | "cr", TRow[]> = { dr: [], cr: [] };
+  if (ledger.opening) {
+    rows[ledger.side === "借" ? "dr" : "cr"].push({ date: ledger.opening.date, desc: ledger.opening.desc, amount: amountLabel(ledger.opening.amount) });
+  }
+  // 前のステップまでの記入は書き込み済み。いまのステップは、読んでいる間は出さず、穴埋めに入ったら空欄で出す
+  const upTo = phase === "read" && !isFinale ? step - 1 : Math.min(step, story.steps.length - 1);
+  for (let i = 0; i <= upTo; i++) {
+    for (const p of ledgerPostings(story, i)) {
+      const nKey = `${p.key}:n`;
+      const aKey = `${p.key}:a`;
+      rows[p.side].push({
+        date: p.date,
+        desc: slotKeys.has(nKey) ? slotCell(nKey) : p.desc,
+        amount: slotKeys.has(aKey) ? slotCell(aKey) : amountLabel(p.amount),
+      });
+    }
+  }
+  const closing = ledgerClosing(story);
+  const showClosing = isFinale && phase !== "read";
+  if (showClosing) rows[closing.side].push({ date: ledger.closing.date, desc: ledger.closing.desc, amount: slotCell(CLOSE_KEY) });
+
+  const side = (list: TRow[]) => (
+    <div className="flex-1 min-w-0">
+      {list.map((r, i) => (
+        <div key={i} className="px-2 py-1.5 border-b border-dashed border-gray-200">
+          <div className="flex items-center gap-1 text-xs font-bold text-gray-500 min-w-0">
+            <span className="shrink-0 tabular-nums">{r.date}</span>
+            <span className="min-w-0 flex-1 truncate text-gray-700">{r.desc}</span>
+          </div>
+          <div className="flex justify-end mt-0.5">
+            <div className="w-24 text-right text-sm font-extrabold text-gray-800 tabular-nums">{r.amount}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <p className="text-center font-extrabold text-gray-700 border-b-2 border-gray-700 pb-1">{ledger.account}</p>
+      <div className="flex text-xs font-extrabold text-gray-400">
+        <div className="flex-1 px-2 py-1">借方</div>
+        <div className="flex-1 px-2 py-1 text-right">貸方</div>
+      </div>
+      <div className="flex">
+        <div className="flex-1 flex border-r-2 border-gray-700 min-w-0">{side(rows.dr)}</div>
+        <div className="flex-1 flex min-w-0">{side(rows.cr)}</div>
+      </div>
+      {showClosing && (
+        <div className="flex border-t-4 border-double border-gray-700 items-center">
+          <div className="flex-1 px-2 py-1.5 text-xs font-bold text-gray-500">合計</div>
+          <div className="w-28 px-2 py-1.5 text-right text-sm font-extrabold tabular-nums">{slotCell(TOTAL_KEY)}</div>
+        </div>
+      )}
     </div>
   );
 }

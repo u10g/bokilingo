@@ -91,8 +91,73 @@ export function retainedEarningsLine(story: Story): StoryLine | undefined {
   return story.lines?.find((l) => l.accounts.includes(RETAINED_EARNINGS));
 }
 
+/* ---------------------------------------------------------
+   勘定記入（ledger）
+   ステップごとに、記入する勘定に関係する仕訳を転記する。
+   摘要は相手科目。相手科目が複数あるときは、相手科目ごとに行を分ける（未払配当金・利益準備金 など）。
+   勘定に関係しない取引（ひっかけ）は記入する行がなく、空欄もない。
+   最後に締切の行（次期繰越・損益など）の金額と合計を求める。
+--------------------------------------------------------- */
+
+export interface LedgerPosting {
+  key: string; // 「p2-0」（ステップ2の1行目）。空欄のキーは「p2-0:n」（摘要）「p2-0:a」（金額）
+  side: "dr" | "cr";
+  date: string;
+  desc: string;
+  amount: number;
+}
+
+export const CLOSE_KEY = "close:a";
+export const TOTAL_KEY = "close:t";
+
+export function ledgerPostings(story: Story, stepIndex: number): LedgerPosting[] {
+  const ledger = story.ledger;
+  const step = story.steps[stepIndex];
+  if (!ledger || !step) return [];
+  const own = step.entries.find((e) => e.account === ledger.account);
+  if (!own) return [];
+  const side = own.dr !== undefined ? "dr" : "cr";
+  const other = side === "dr" ? "cr" : "dr";
+  const amount = own[side]!;
+  const counterparts = step.entries.filter((e) => e.account !== ledger.account && e[other] !== undefined);
+  const sameSide = step.entries.filter((e) => e.account !== ledger.account && e[side] !== undefined);
+  const row = (desc: string, value: number, k = 0): LedgerPosting => ({ key: `p${stepIndex}-${k}`, side, date: step.date ?? "", desc, amount: value });
+  // 相手科目が1つならその科目。相手科目が複数で、この勘定の側がこの勘定だけなら相手科目ごとに分ける。それ以外は諸口
+  if (counterparts.length === 1) return [row(counterparts[0].account, amount)];
+  if (sameSide.length === 0) return counterparts.map((e, k) => row(e.account, e[other]!, k));
+  return [row("諸口", amount)];
+}
+
+// 締切の前の、借方・貸方それぞれの合計
+export function ledgerSums(story: Story): { dr: number; cr: number } {
+  const sums = { dr: 0, cr: 0 };
+  const opening = story.ledger?.opening;
+  if (opening) sums[story.ledger!.side === "借" ? "dr" : "cr"] += opening.amount;
+  story.steps.forEach((_, i) => ledgerPostings(story, i).forEach((p) => (sums[p.side] += p.amount)));
+  return sums;
+}
+
+// 締切の行（残高と反対側に記入する）と、締め切った後の合計
+export function ledgerClosing(story: Story): { side: "dr" | "cr"; amount: number; total: number } {
+  const { dr, cr } = ledgerSums(story);
+  return dr >= cr ? { side: "cr", amount: dr - cr, total: dr } : { side: "dr", amount: cr - dr, total: cr };
+}
+
 // ステップの空欄。最後のステップ（steps.length）は当期純利益
 export function stepSlots(story: Story, stepIndex: number): StorySlot[] {
+  if (story.table === "ledger") {
+    if (stepIndex === story.steps.length) {
+      const c = ledgerClosing(story);
+      return [
+        { key: CLOSE_KEY, account: story.ledger?.closing.desc ?? "", col: "after", answer: amountLabel(c.amount) },
+        { key: TOTAL_KEY, account: "合計", col: "after", answer: amountLabel(c.total) },
+      ];
+    }
+    return ledgerPostings(story, stepIndex).flatMap((p) => [
+      { key: `${p.key}:n`, account: p.key, col: "after" as const, answer: p.desc },
+      { key: `${p.key}:a`, account: p.key, col: "after" as const, answer: amountLabel(p.amount) },
+    ]);
+  }
   if (stepIndex === story.steps.length) {
     const net: StorySlot = { key: NET_KEY, account: NET_LABEL, col: "after", answer: amountLabel(netIncome(story)) };
     const re = story.table === "statements" ? retainedEarningsLine(story) : undefined;
@@ -132,6 +197,7 @@ export function stepChoices(story: Story, stepIndex: number): string[] {
 --------------------------------------------------------- */
 
 export function validateStory(story: Story): string[] {
+  if (story.table === "ledger") return validateLedger(story);
   const errors: string[] = [];
   const accounts = new Map(story.accounts.map((a) => [a.account, a]));
   if (accounts.size !== story.accounts.length) errors.push("科目が重複している");
@@ -205,5 +271,35 @@ function validateLines(story: Story, adj: Adjustments): string[] {
   const assets = total("資産");
   const claims = total("負債・純資産") + netIncome(story);
   if (assets !== claims) errors.push(`貸借対照表の資産合計 ${assets} と負債・純資産合計 ${claims} が一致しない`);
+  return errors;
+}
+
+// 勘定記入のストーリーの検証：各取引の仕訳が貸借一致し、勘定には1つの側だけに記入する。締切の金額は正
+function validateLedger(story: Story): string[] {
+  const errors: string[] = [];
+  const ledger = story.ledger;
+  if (!ledger) return ["勘定記入のストーリーに ledger がない"];
+  story.steps.forEach((step, i) => {
+    const label = `ステップ${i + 1}`;
+    const dr = step.entries.reduce((t, e) => t + (e.dr ?? 0), 0);
+    const cr = step.entries.reduce((t, e) => t + (e.cr ?? 0), 0);
+    if (dr !== cr || dr === 0) errors.push(`${label}: 仕訳の借方 ${dr} と貸方 ${cr} が一致しない`);
+    const own = step.entries.filter((e) => e.account === ledger.account);
+    if (own.length > 1 || own.some((e) => e.dr !== undefined && e.cr !== undefined)) errors.push(`${label}: 勘定の借方と貸方の両方に記入している`);
+    if (own.length && !step.date) errors.push(`${label}: 勘定に記入するのに日付がない`);
+  });
+  const c = ledgerClosing(story);
+  if (c.amount <= 0) errors.push("締切の金額が0以下");
+  const expected = ledger.side === "借" ? "cr" : "dr";
+  if (c.side !== expected && c.amount > 0) errors.push(`残高が${ledger.side}方に出ない（締切の行の側が逆）`);
+
+  for (let i = 0; i <= story.steps.length; i++) {
+    const answers = stepSlots(story, i).map((s) => s.answer);
+    const distractors = i === story.steps.length ? story.finale.distractors : story.steps[i].distractors;
+    // 勘定に関係しない取引には空欄がないので、ダミーも要らない
+    if (answers.length === 0) continue;
+    for (const d of distractors) if (answers.includes(d)) errors.push(`ステップ${i + 1}: ダミーの選択肢 ${d} が正解と重なっている`);
+    if (distractors.length < 2) errors.push(`ステップ${i + 1}: ダミーの選択肢が2つ未満`);
+  }
   return errors;
 }

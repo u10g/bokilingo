@@ -12,7 +12,7 @@ describe("ストーリーのデータ", () => {
   it.each(STORIES.map((s) => [s.id, s] as const))("%s: 金額と選択肢に矛盾がない", (_, s) => {
     expect(TOPICS[s.topicId], s.topicId).toBeDefined();
     expect(validateStory(s)).toEqual([]);
-    expect(netIncome(s)).toBeGreaterThan(0);
+    if (s.table !== "ledger") expect(netIncome(s)).toBeGreaterThan(0);
   });
 
   // 最後のステップの解説に書いた金額（収益・費用・当期純利益）が、計算と一致する
