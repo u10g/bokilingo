@@ -70,6 +70,8 @@ export function ProgressDetailScreen({
   solvedCount,
   totalXp,
   completedSets,
+  weakCount,
+  graduatedCount,
   onResetData,
   onClose,
 }: {
@@ -77,6 +79,8 @@ export function ProgressDetailScreen({
   solvedCount: number;
   totalXp: number;
   completedSets: CompletedSets;
+  weakCount: number;
+  graduatedCount: number;
   onResetData: () => void;
   onClose: () => void;
 }) {
@@ -91,9 +95,20 @@ export function ProgressDetailScreen({
         <p className="text-gray-400 text-sm mt-1">これまでにクリアした問題数（全コース合計）</p>
       </div>
 
-      <div className="bg-amber-50 rounded-2xl py-3 mb-6 text-center">
+      <div className="bg-amber-50 rounded-2xl py-3 mb-3 text-center">
         <p className="text-amber-500 font-extrabold text-xl">{totalXp.toLocaleString()} XP</p>
         <p className="text-xs text-gray-400 font-bold">累計獲得XP</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="bg-violet-50 rounded-2xl py-3 text-center">
+          <p className="text-violet-600 font-extrabold text-xl">{weakCount}問</p>
+          <p className="text-xs text-gray-400 font-bold">苦手な問題</p>
+        </div>
+        <div className="bg-green-50 rounded-2xl py-3 text-center">
+          <p className="text-green-600 font-extrabold text-xl">{graduatedCount}問</p>
+          <p className="text-xs text-gray-400 font-bold">苦手から卒業</p>
+        </div>
       </div>
 
       <div className="space-y-2">

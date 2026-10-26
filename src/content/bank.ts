@@ -1,4 +1,5 @@
 import type { BankEntry } from "../domain/course.ts";
+import type { Question } from "../domain/types.ts";
 import { ACCOUNTS_NODES } from "./legacy/accounts.ts";
 import { JOURNAL_BLANK_NODES } from "./legacy/journalBlank.ts";
 import { CLOSING_STATEMENT_QUESTIONS } from "./questions/closingStatements.ts";
@@ -99,6 +100,8 @@ function build(): BankEntry[] {
 }
 
 export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS, ...LEDGER_ENTRY_QUESTIONS];
+
+export const QUESTION_BY_ID: Map<string, Question> = new Map(BANK.map((e) => [e.question.id, e.question]));
 
 for (const e of BANK) {
   if (!TOPICS[e.topicId]) throw new Error(`未定義の論点 ${e.topicId}（${e.question.id}）`);

@@ -1,5 +1,6 @@
 import { MAX_HEARTS } from "./constants.ts";
 import type { Course, LessonNode, WrongEntry } from "./types.ts";
+import { fromMissCounts, type QuestionStats } from "./weak.ts";
 
 /* ---------------------------------------------------------
    進捗の状態と、保存・復元・日付まわりのルール
@@ -19,7 +20,7 @@ export interface ProgressSnapshot {
   lastActiveDate: string | null; // ストリーク判定の基準日
   wrongToday: WrongEntry[];
   wrongTodayDate: string; // 日付が変われば誤答リストを破棄
-  missCounts: Record<string, number>; // 問題ID → これまでの誤答回数。セクション復習の出題に使う
+  questionStats: QuestionStats; // 問題ID → 誤答回数・正解した日など。苦手の復習とセクション復習の出題に使う
 }
 
 // 保存形式。Set は配列に変換して保存する
@@ -32,7 +33,8 @@ export interface SavedProgress {
   lastActiveDate?: string | null;
   wrongToday?: WrongEntry[];
   wrongTodayDate?: string;
-  missCounts?: Record<string, number>;
+  questionStats?: QuestionStats;
+  missCounts?: Record<string, number>; // 旧形式。questionStats がなければ引き継ぐ
 }
 
 export function todayStr(d: Date = new Date()): string {
@@ -62,7 +64,7 @@ export function initialProgress(courses: Course[], today: string): ProgressSnaps
     lastActiveDate: null,
     wrongToday: [],
     wrongTodayDate: today,
-    missCounts: {},
+    questionStats: {},
   };
 }
 
@@ -76,7 +78,7 @@ export function serializeProgress(p: ProgressSnapshot): SavedProgress {
     lastActiveDate: p.lastActiveDate,
     wrongToday: p.wrongToday,
     wrongTodayDate: p.wrongTodayDate,
-    missCounts: p.missCounts,
+    questionStats: p.questionStats,
   };
 }
 
@@ -111,7 +113,7 @@ export function restoreProgress(data: SavedProgress | null, courses: Course[], t
     lastActiveDate: data.lastActiveDate ?? null,
     wrongToday,
     wrongTodayDate: today,
-    missCounts: data.missCounts ?? {},
+    questionStats: data.questionStats ?? fromMissCounts(data.missCounts ?? {}),
   };
 }
 

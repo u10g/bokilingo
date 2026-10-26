@@ -32,6 +32,8 @@ python3 -m unittest discover -s tools/pdf   # PDF読み込みツールのテス�
 
 レッスンは `src/domain/course.ts` が自動で組み立てる。小項目（論点）ごとに 5要素分類 → 仕訳穴埋め を並べ、セクションの最後に復習を置く。復習は正答率70%以上で合格になり、誤答の多い問題を優先して出す。
 
+一度でも間違えた問題は「苦手」として記録し（`src/domain/weak.ts`）、翌日以降にマップ上部の「苦手な問題」から復習できる。間違えた後、別々の2日で正解すると苦手から卒業する。
+
 問題形式を追加するときは `src/domain/types.ts` の `Question` に型を足す。`questions.ts` と `QuestionRenderer.tsx` の分岐漏れは型エラーで検出される。
 
 ## 取り扱い注意

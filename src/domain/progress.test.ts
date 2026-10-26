@@ -61,7 +61,7 @@ describe("保存と復元", () => {
     const p = restoreProgress(null, COURSES, today);
     p.activeCourseId = COURSES[1].id;
     p.completedSets[COURSES[1].id] = new Set([COURSES[1].nodes[0].id, COURSES[1].nodes[2].id]);
-    p.missCounts = { q1: 2 };
+    p.questionStats = { q1: { miss: 2, okDays: 1, lastOk: "2026-10-24", lastMiss: "2026-10-20" } };
     p.solvedCount = 12;
     p.totalXp = 120;
     p.streak = 3;
@@ -79,6 +79,11 @@ describe("保存と復元", () => {
     );
     expect(p.wrongToday).toEqual([]);
     expect(p.streak).toBe(0);
+  });
+
+  it("旧形式の誤答回数（missCounts）を苦手の記録として引き継ぐ", () => {
+    const p = restoreProgress({ missCounts: { q1: 3 } }, COURSES, today);
+    expect(p.questionStats).toEqual({ q1: { miss: 3, okDays: 0, lastOk: null, lastMiss: null } });
   });
 
   it("存在しないコースIDは標準コースにフォールバックし、存在しないレッスンIDは捨てる", () => {

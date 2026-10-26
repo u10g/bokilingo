@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BookOpen, ChevronDown, Dumbbell, Flame, Gem, Heart, Lock, Star, Table2, Trophy, X } from "lucide-react";
+import { BookOpen, ChevronDown, Dumbbell, Flame, Gem, Heart, Lock, Star, Table2, Target, Trophy, X } from "lucide-react";
 import type { NodeState } from "../domain/progress.ts";
 import type { ChapterInfo, LessonNode, NodeKind } from "../domain/types.ts";
 
@@ -37,6 +37,7 @@ export function Header({
   onOpenStreak,
   onOpenProgress,
   onOpenReview,
+  children,
 }: {
   courseTitle: string;
   streak: number;
@@ -46,24 +47,28 @@ export function Header({
   onOpenStreak: () => void;
   onOpenProgress: () => void;
   onOpenReview: () => void;
+  children?: ReactNode; // ヘッダーの下段（苦手の復習の入口など）
 }) {
   return (
-    <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-2">
-      <button onClick={onOpenCourses} className="flex items-center gap-1 shrink-0 min-w-0">
-        <span className="font-extrabold text-green-600 text-base tracking-tight truncate max-w-32">{courseTitle}</span>
-        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-      </button>
-      <div className="flex items-center gap-2 shrink-0">
-        <StatButton label="継続記録" icon={<Flame className="w-4 h-4 text-orange-500 fill-orange-500" />} value={streak} bg="bg-orange-50" onClick={onOpenStreak} />
-        <StatButton label="学習の記録" icon={<Gem className="w-4 h-4 text-sky-500" />} value={solvedCount} bg="bg-sky-50" onClick={onOpenProgress} />
-        <StatButton
-          label="ライフ"
-          icon={<Heart className={`w-4 h-4 text-red-500 ${hearts > 0 ? "fill-red-500" : ""}`} />}
-          value={hearts}
-          bg="bg-red-50"
-          onClick={onOpenReview}
-        />
+    <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
+      <div className="px-4 py-3 flex items-center justify-between gap-2">
+        <button onClick={onOpenCourses} className="flex items-center gap-1 shrink-0 min-w-0">
+          <span className="font-extrabold text-green-600 text-base tracking-tight truncate max-w-32">{courseTitle}</span>
+          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <StatButton label="継続記録" icon={<Flame className="w-4 h-4 text-orange-500 fill-orange-500" />} value={streak} bg="bg-orange-50" onClick={onOpenStreak} />
+          <StatButton label="学習の記録" icon={<Gem className="w-4 h-4 text-sky-500" />} value={solvedCount} bg="bg-sky-50" onClick={onOpenProgress} />
+          <StatButton
+            label="ライフ"
+            icon={<Heart className={`w-4 h-4 text-red-500 ${hearts > 0 ? "fill-red-500" : ""}`} />}
+            value={hearts}
+            bg="bg-red-50"
+            onClick={onOpenReview}
+          />
+        </div>
       </div>
+      {children}
     </div>
   );
 }
@@ -184,6 +189,23 @@ export function NodeSheet({ node, state, onStart, onClose }: { node: LessonNode;
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ヘッダーの下に出す、苦手な問題の復習への入口。
+// マップは現在地まで自動でスクロールするため、固定ヘッダーの中に置いて常に見えるようにする
+export function WeakCard({ count, onStart }: { count: number; onStart: () => void }) {
+  return (
+    <div className="flex items-center gap-2 bg-violet-50 border-t border-violet-100 px-4 py-2">
+      <Target className="w-5 h-5 text-violet-500 shrink-0" />
+      <p className="flex-1 min-w-0 text-sm font-extrabold text-gray-700">苦手な問題 {count}問</p>
+      <button
+        onClick={onStart}
+        className="shrink-0 bg-violet-500 border-b-4 border-violet-600 text-white font-extrabold text-xs px-3 py-1.5 rounded-xl active:translate-y-0.5 active:border-b-2 transition-transform"
+      >
+        復習する
+      </button>
     </div>
   );
 }
