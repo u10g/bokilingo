@@ -18,8 +18,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
-        name: "ボキリンゴ 簿記3級",
-        short_name: "ボキリンゴ",
+        name: "bokilingo 簿記3級",
+        short_name: "bokilingo",
         description: "Duolingo風の日商簿記3級 学習アプリ",
         lang: "ja",
         start_url: BASE,
