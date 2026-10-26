@@ -72,7 +72,7 @@ describe("コース構成", () => {
     expect(BANK.map((e) => e.question.id).filter((id) => !inCourse.has(id))).toEqual([]);
   });
 
-  it.each(COURSES.map((c) => [c.id, c] as const))("%s: セクションの構成（分類→仕訳→復習）", (_, c) => {
+  it.each(COURSES.map((c) => [c.id, c] as const))("%s: セクションの構成（5要素分類で始まり、復習で終わる）", (_, c) => {
     const sections = c.nodes.map((n) => n.chapter).filter((ch, i, arr) => i === 0 || arr[i - 1] !== ch);
     // 同じセクションのレッスンは連続して並ぶ（見出しが二重に出ない）
     expect(dupes(sections)).toEqual([]);
@@ -82,6 +82,8 @@ describe("コース構成", () => {
       expect(nodes.at(-1)?.kind, `${sec} の最後は復習`).toBe("review");
       expect(nodes.filter((n) => n.kind === "review")).toHaveLength(1);
     }
+    // チャプター（セクション）は5要素分類の予習から始める
+    for (const sec of sections) expect(c.nodes.find((n) => n.chapter === sec)?.kind, `${sec} の最初は5要素分類`).toBe("classify");
     for (const n of c.nodes) {
       if (n.kind === "story") {
         expect(n.story, n.id).toBeDefined();
