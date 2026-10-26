@@ -1,4 +1,13 @@
-import type { Answer, JournalAnswer, JournalBlankAnswer, JournalBlankQuestion, Question, TableBlankQuestion } from "./types.ts";
+import type {
+  Answer,
+  JournalAnswer,
+  JournalBlankAnswer,
+  JournalBlankQuestion,
+  LedgerAccountQuestion,
+  Question,
+  TableBlankQuestion,
+  TableCell,
+} from "./types.ts";
 
 /* ---------------------------------------------------------
    問題形式ごとのヘルパー
@@ -51,6 +60,30 @@ export function tableSlots(q: TableBlankQuestion): JournalSlot[] {
   return slots;
 }
 
+// 勘定記入の空欄を、借方（上から）→ 貸方（上から）→ 合計 の順に返す。
+// キーは d0n（借方1行目の摘要）、c1a（貸方2行目の金額）、t（合計）
+export function ledgerSlots(q: LedgerAccountQuestion): JournalSlot[] {
+  const slots: JournalSlot[] = [];
+  const push = (key: string, cell: TableCell | undefined) => {
+    if (cell !== undefined && typeof cell !== "string") slots.push({ key, answer: cell.blank });
+  };
+  (["debit", "credit"] as const).forEach((side) =>
+    q[side].forEach((e, i) => {
+      push(`${side[0]}${i}n`, e.desc);
+      push(`${side[0]}${i}a`, e.amount);
+    }),
+  );
+  push("t", q.total);
+  return slots;
+}
+
+// 単語バンク方式（語群から空欄に入れる）の形式の空欄
+function bankSlots(q: JournalBlankQuestion | TableBlankQuestion | LedgerAccountQuestion): JournalSlot[] {
+  if (q.format === "journalBlank") return journalSlots(q);
+  if (q.format === "tableBlank") return tableSlots(q);
+  return ledgerSlots(q);
+}
+
 type WithChoices = { id: string; choices: string[] };
 
 // 選択肢トークンのID。同じ語が複数あっても区別できるよう index を含める
@@ -69,6 +102,7 @@ export function emptyAnswer(q: Question): Answer {
       return { debitAccount: "", debitAmount: "", creditAccount: "", creditAmount: "" };
     case "journalBlank":
     case "tableBlank":
+    case "ledgerAccount":
       return { slots: {} };
     case "multiSelect":
       return [];
@@ -87,13 +121,11 @@ export function isAnswerReady(q: Question, answer: Answer): boolean {
       const a = answer as JournalAnswer;
       return Boolean(a.debitAccount && a.debitAmount !== "" && a.creditAccount && a.creditAmount !== "");
     }
-    case "journalBlank": {
+    case "journalBlank":
+    case "tableBlank":
+    case "ledgerAccount": {
       const a = answer as JournalBlankAnswer;
-      return journalSlots(q).every((s) => Boolean(a.slots[s.key]));
-    }
-    case "tableBlank": {
-      const a = answer as JournalBlankAnswer;
-      return tableSlots(q).every((s) => Boolean(a.slots[s.key]));
+      return bankSlots(q).every((s) => Boolean(a.slots[s.key]));
     }
     case "multiSelect":
       return (answer as string[]).length > 0;
@@ -117,17 +149,12 @@ export function gradeAnswer(q: Question, answer: Answer): boolean {
         Number(a.creditAmount) === q.creditAmount
       );
     }
-    case "journalBlank": {
+    case "journalBlank":
+    case "tableBlank":
+    case "ledgerAccount": {
       // 置かれた語のラベルが、そのセルの正解と一致するかを見る
       const a = answer as JournalBlankAnswer;
-      return journalSlots(q).every((s) => {
-        const id = a.slots[s.key];
-        return Boolean(id) && tokenLabel(q, id) === s.answer;
-      });
-    }
-    case "tableBlank": {
-      const a = answer as JournalBlankAnswer;
-      return tableSlots(q).every((s) => {
+      return bankSlots(q).every((s) => {
         const id = a.slots[s.key];
         return Boolean(id) && tokenLabel(q, id) === s.answer;
       });
@@ -158,7 +185,8 @@ export function correctAnswerText(q: Question): string {
         })
         .join("、");
     case "tableBlank":
-      return tableSlots(q)
+    case "ledgerAccount":
+      return bankSlots(q)
         .map((s) => s.answer)
         .join("、");
     case "multiSelect":

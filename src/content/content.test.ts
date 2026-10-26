@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACCOUNTS } from "../domain/constants.ts";
-import { emptyAnswer, gradeAnswer, isAnswerReady, journalSlots, tableSlots, tokenId } from "../domain/questions.ts";
+import { emptyAnswer, gradeAnswer, isAnswerReady, journalSlots, ledgerSlots, tableSlots, tokenId } from "../domain/questions.ts";
 import type { JournalBlankQuestion, Question } from "../domain/types.ts";
 import { CLASSIFY_LESSON_MAX, JOURNAL_LESSON_MAX, TABLE_LESSON_MAX } from "../domain/course.ts";
 import { BANK } from "./bank.ts";
@@ -28,9 +28,9 @@ describe("問題バンク", () => {
     expect(dupes(allQuestions.map((x) => x.q.id))).toEqual([]);
   });
 
-  it("出題するのは 5要素分類・仕訳穴埋め・複数選択・表の穴埋め だけ", () => {
+  it("出題するのは 5要素分類・仕訳穴埋め・複数選択・表の穴埋め・勘定記入 だけ", () => {
     const formats = new Set(BANK.map((e) => e.question.format));
-    expect([...formats].sort()).toEqual(["classify", "journalBlank", "multiSelect", "tableBlank"]);
+    expect([...formats].sort()).toEqual(["classify", "journalBlank", "ledgerAccount", "multiSelect", "tableBlank"]);
   });
 
   it("すべての論点に問題がある", () => {
@@ -78,7 +78,7 @@ describe("コース構成", () => {
         expect(n.questions.length, n.id).toBeLessThanOrEqual(JOURNAL_LESSON_MAX);
       }
       if (n.kind === "table") {
-        expect(n.questions.every((q) => q.format === "multiSelect" || q.format === "tableBlank"), n.id).toBe(true);
+        expect(n.questions.every((q) => ["multiSelect", "tableBlank", "ledgerAccount"].includes(q.format)), n.id).toBe(true);
         expect(n.questions.length, n.id).toBeLessThanOrEqual(TABLE_LESSON_MAX);
       }
     }
@@ -212,6 +212,31 @@ describe("表の穴埋め（tableBlank）", () => {
         expect(v(row[iq]) * v(row[iu]), JSON.stringify(row)).toBe(v(row[ia]));
       }
     }
+
+    const right = { slots: Object.fromEntries(slots.map((s) => [s.key, tokenId(q, q.choices.indexOf(s.answer))])) };
+    expect(isAnswerReady(q, right)).toBe(true);
+    expect(gradeAnswer(q, right)).toBe(true);
+    const wrongIdx = q.choices.findIndex((c) => c !== slots[0].answer);
+    expect(gradeAnswer(q, { slots: { ...right.slots, [slots[0].key]: tokenId(q, wrongIdx) } })).toBe(false);
+    expect(isAnswerReady(q, emptyAnswer(q))).toBe(false);
+  });
+});
+
+describe("勘定記入（ledgerAccount）", () => {
+  const num = (s: string) => Number(s.replace(/,/g, ""));
+  const text = (c: string | { blank: string }) => (typeof c === "string" ? c : c.blank);
+
+  it.each(byFormat("ledgerAccount").map((q) => [q.id, q] as const))("%s", (_, q) => {
+    const slots = ledgerSlots(q);
+    expect(slots.length).toBeGreaterThan(0);
+
+    // 借方合計＝貸方合計＝合計欄（空欄は正解で埋めて計算する）
+    const sum = (es: typeof q.debit) => es.reduce((t, e) => t + num(text(e.amount)), 0);
+    expect(sum(q.debit)).toBe(sum(q.credit));
+    if (q.total !== undefined) expect(num(text(q.total))).toBe(sum(q.debit));
+
+    for (const s of slots) expect(q.choices).toContain(s.answer);
+    expect(dupes(q.choices)).toEqual([]);
 
     const right = { slots: Object.fromEntries(slots.map((s) => [s.key, tokenId(q, q.choices.indexOf(s.answer))])) };
     expect(isAnswerReady(q, right)).toBe(true);
