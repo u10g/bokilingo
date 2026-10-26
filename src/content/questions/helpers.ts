@@ -244,10 +244,28 @@ export function ilSummary(topicId: string, id: string, method: InvMethod, item: 
 
 export type LaEntry = [date: string, desc: string, amount: number];
 
+// 勘定記入の入力順。本試験と同じく日付の順に記入し、損益への振替と締切（次期繰越など）、合計は最後にする
+const OPENING = ["前期繰越", "前月繰越"];
+const CLOSING = ["次期繰越", "次月繰越"];
+
+function ledgerDateRank(date: string): number {
+  const m = /^(\d{1,2})\/(\d{1,2})$/.exec(date);
+  if (!m) return 1500; // 「期中」などは期首と期末の間
+  const month = Number(m[1]);
+  return (month < 4 ? month + 12 : month) * 100 + Number(m[2]);
+}
+
+function ledgerEntryRank(account: string, desc: string): number {
+  if (OPENING.includes(desc)) return -1;
+  if (CLOSING.includes(desc) || (account === "損益" && desc === "繰越利益剰余金")) return 2;
+  if (desc === "損益") return 1;
+  return 0;
+}
+
 export function la(
   topicId: string,
   id: string,
-  prompt: string,
+  prompt: string | string[], // 配列なら1行ずつ（冒頭の指示文と、日付付きの取引）
   account: string,
   debit: LaEntry[],
   credit: LaEntry[],
@@ -267,10 +285,21 @@ export function la(
   const side = (entries: LaEntry[], s: "d" | "c"): LedgerEntry[] =>
     entries.map(([date, desc, amount], i) => ({ date, desc: cell(`${s}${i}n`, desc), amount: cell(`${s}${i}a`, yen(amount)) }));
 
+  const entries = [...debit.map((e, i) => ["d", i, e] as const), ...credit.map((e, i) => ["c", i, e] as const)];
+  const sortKey = ([s, i, [date, desc]]: (typeof entries)[number]) => {
+    const r = ledgerEntryRank(account, desc);
+    return [r, r > 0 ? 0 : ledgerDateRank(date), s === "d" ? 0 : 1, i];
+  };
+  const sorted = [...entries].sort((a, b) => {
+    const [ka, kb] = [sortKey(a), sortKey(b)];
+    return ka.reduce((acc, v, k) => acc || v - kb[k], 0);
+  });
+  const order = [...sorted.flatMap(([s, i]) => [`${s}${i}n`, `${s}${i}a`]), "t"].filter((k) => blanks.includes(k));
+
   const question: LedgerAccountQuestion = {
     id,
     format: "ledgerAccount",
-    prompt,
+    prompt: Array.isArray(prompt) ? prompt.join("\n") : prompt,
     account,
     debit: side(debit, "d"),
     credit: side(credit, "c"),
@@ -282,5 +311,6 @@ export function la(
   if (unknown.length || answers.length !== blanks.length) throw new Error(`${id}: 空欄のキーが正しくない ${blanks.join(",")}`);
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
   question.choices = [...answers, ...distractors];
+  question.order = order;
   return { topicId, question };
 }

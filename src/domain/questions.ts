@@ -57,15 +57,10 @@ export function tableSlots(q: TableBlankQuestion): JournalSlot[] {
       if (typeof cell !== "string") slots.push({ key: `r${ri}c${ci}`, answer: cell.blank });
     }),
   );
-  if (!q.order) return slots;
-  const rank = (key: string) => {
-    const i = q.order!.indexOf(key);
-    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
-  };
-  return [...slots].sort((a, b) => rank(a.key) - rank(b.key));
+  return sortByOrder(slots, q.order);
 }
 
-// 勘定記入の空欄を、借方（上から）→ 貸方（上から）→ 合計 の順に返す。
+// 勘定記入の空欄を、入力する順に返す。order がなければ借方（上から）→ 貸方（上から）→ 合計。
 // キーは d0n（借方1行目の摘要）、c1a（貸方2行目の金額）、t（合計）
 export function ledgerSlots(q: LedgerAccountQuestion): JournalSlot[] {
   const slots: JournalSlot[] = [];
@@ -79,7 +74,17 @@ export function ledgerSlots(q: LedgerAccountQuestion): JournalSlot[] {
     }),
   );
   push("t", q.total);
-  return slots;
+  return sortByOrder(slots, q.order);
+}
+
+// order に並べたキーの順に空欄を並べ替える（order にないキーは後ろ）
+function sortByOrder(slots: JournalSlot[], order: string[] | undefined): JournalSlot[] {
+  if (!order) return slots;
+  const rank = (key: string) => {
+    const i = order.indexOf(key);
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...slots].sort((a, b) => rank(a.key) - rank(b.key));
 }
 
 // 単語バンク方式（語群から空欄に入れる）の形式の空欄
