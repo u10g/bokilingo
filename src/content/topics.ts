@@ -2,8 +2,8 @@ import type { TopicDef } from "../domain/course.ts";
 
 /* ---------------------------------------------------------
    論点マスタ（2022年度適用 出題区分表の3級範囲）
-   いまは旧コースの「場面別の章立て」を小項目に分けたもの。
-   参考書の分析（docs/topic-map.md）ができたら、論点の追加・分割をここで行う。
+   旧コースの「場面別の章立て」を小項目に分けたものに、
+   参考書の分析（docs/topic-map.md）で見つかった論点を加えている。
 --------------------------------------------------------- */
 
 const list: TopicDef[] = [
@@ -26,6 +26,11 @@ const list: TopicDef[] = [
   { id: "consumption-tax", title: "消費税", desc: "仮払消費税・仮受消費税の処理です。" },
   { id: "corporate-tax", title: "法人税等", desc: "法人税・住民税及び事業税の処理です。" },
   { id: "equity", title: "株式の発行と配当", desc: "資本金と、繰越利益剰余金の配当です。" },
+  { id: "correction", title: "訂正仕訳", desc: "誤った仕訳を正しい仕訳に直します。" },
+  { id: "slips", title: "伝票", desc: "入金伝票・出金伝票・振替伝票の3伝票制です。" },
+  { id: "subledger", title: "補助簿", desc: "取引を記入する補助簿の選び方です。" },
+  { id: "inventory-ledger", title: "商品有高帳", desc: "移動平均法・先入先出法による記入です。" },
+  { id: "statements", title: "財務諸表のしくみ", desc: "貸借対照表・損益計算書と、利益の計算です。" },
 ];
 
 export const TOPICS: Record<string, TopicDef> = Object.fromEntries(list.map((t) => [t.id, t]));

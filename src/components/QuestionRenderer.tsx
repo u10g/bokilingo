@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ACCOUNTS, ELEMENTS } from "../domain/constants.ts";
-import { journalSlots, shuffled, tokenId } from "../domain/questions.ts";
+import { journalSlots, shuffled, tableSlots, tokenId, type JournalSlot } from "../domain/questions.ts";
 import type {
   Answer,
   ClassifyQuestion,
@@ -10,8 +10,10 @@ import type {
   JournalBlankQuestion,
   JournalQuestion,
   JournalRow,
+  MultiSelectQuestion,
   Question,
   Side,
+  TableBlankQuestion,
   TwoChoiceQuestion,
 } from "../domain/types.ts";
 
@@ -138,14 +140,12 @@ function JournalView({ q, answer, setAnswer }: Props<JournalQuestion, JournalAns
    空欄が複数ある場合は、埋めたいセルをタップして選んでから語を入れる。
 --------------------------------------------------------- */
 
-function JournalBlankView({ q, answer, setAnswer }: Props<JournalBlankQuestion, JournalBlankAnswer>) {
+// 単語バンクの操作（仕訳穴埋めと表の穴埋めで共通）
+function useTokenBank(q: { id: string; choices: string[] }, slots: JournalSlot[], answer: JournalBlankAnswer, setAnswer: (a: Answer) => void) {
   // 選択肢は毎回並び順を変えるが、同じ問題を解いている間は固定する
   const tokens = useMemo(() => shuffled(q.choices.map((label, i) => ({ id: tokenId(q, i), label }))), [q]);
-
-  const slots = journalSlots(q);
   const placed = answer.slots;
   const usedIds = Object.values(placed).filter(Boolean);
-
   const [activeKey, setActiveKey] = useState<string | null>(slots[0] ? slots[0].key : null);
   const tokenById = (id: string) => tokens.find((t) => t.id === id);
 
@@ -173,6 +173,36 @@ function JournalBlankView({ q, answer, setAnswer }: Props<JournalBlankQuestion, 
     }
     setActiveKey(key);
   };
+
+  return { tokens, placed, usedIds, tokenById, targetKey, placeToken, handleSlotTap };
+}
+
+function TokenBank({ tokens, usedIds, onPick }: { tokens: { id: string; label: string }[]; usedIds: string[]; onPick: (t: { id: string }) => void }) {
+  return (
+    <div className="flex flex-wrap items-start content-start gap-2 justify-center min-h-24">
+      {tokens.map((t) => {
+        const used = usedIds.includes(t.id);
+        // 使用中でも同じ大きさの枠を残し、他のボタンが動かないようにする
+        return (
+          <button
+            key={t.id}
+            disabled={used}
+            onClick={() => onPick(t)}
+            className={`px-4 py-2 rounded-xl border-2 border-b-4 font-extrabold text-sm transition-transform
+              ${used ? "bg-gray-100 border-gray-100 text-transparent" : "bg-white border-gray-200 text-gray-700 active:translate-y-0.5 active:border-b-2"}
+            `}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function JournalBlankView({ q, answer, setAnswer }: Props<JournalBlankQuestion, JournalBlankAnswer>) {
+  const slots = journalSlots(q);
+  const { tokens, placed, usedIds, tokenById, targetKey, placeToken, handleSlotTap } = useTokenBank(q, slots, answer, setAnswer);
 
   const multiSlot = slots.length > 1;
   const sideLabel = q.blankSide === "debit" ? "借方" : "貸方";
@@ -235,23 +265,103 @@ function JournalBlankView({ q, answer, setAnswer }: Props<JournalBlankQuestion, 
         ))}
       </div>
 
-      <div className="flex flex-wrap items-start content-start gap-2 justify-center min-h-24">
-        {tokens.map((t) => {
-          const used = usedIds.includes(t.id);
-          // 使用中でも同じ大きさの枠を残し、他のボタンが動かないようにする
-          return (
-            <button
-              key={t.id}
-              disabled={used}
-              onClick={() => placeToken(t)}
-              className={`px-4 py-2 rounded-xl border-2 border-b-4 font-extrabold text-sm transition-transform
-                ${used ? "bg-gray-100 border-gray-100 text-transparent" : "bg-white border-gray-200 text-gray-700 active:translate-y-0.5 active:border-b-2"}
-              `}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+      <TokenBank tokens={tokens} usedIds={usedIds} onPick={placeToken} />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   表の穴埋め（商品有高帳・財務諸表など）
+   単語バンクの操作は仕訳穴埋めと同じ。列が多い表でも375px幅に収まるよう、文字を小さくする。
+--------------------------------------------------------- */
+
+function TableBlankView({ q, answer, setAnswer }: Props<TableBlankQuestion, JournalBlankAnswer>) {
+  const slots = tableSlots(q);
+  const { tokens, placed, usedIds, tokenById, targetKey, placeToken, handleSlotTap } = useTokenBank(q, slots, answer, setAnswer);
+  const multiSlot = slots.length > 1;
+
+  return (
+    <div>
+      <p className="text-sm text-gray-400 font-bold mb-2">
+        表の空欄を埋めよう
+        {multiSlot && <span className="ml-1 text-gray-300">（入れたい欄をタップして選べます）</span>}
+      </p>
+      <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+        <p className="text-base font-bold text-gray-800 whitespace-pre-line">{q.prompt}</p>
+      </div>
+
+      <p className="text-xs font-extrabold text-gray-500 mb-1">{q.caption}</p>
+      <div className="border-2 border-gray-200 rounded-2xl overflow-hidden mb-6">
+        <table className="w-full table-fixed text-xs">
+          <thead className="bg-gray-100">
+            <tr>
+              {q.columns.map((c, i) => (
+                <th key={i} className="px-1 py-2 font-extrabold text-gray-500 border-r last:border-r-0 border-gray-200">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {q.rows.map((row, ri) => (
+              <tr key={ri} className="border-t border-gray-200">
+                {row.map((cell, ci) => {
+                  const key = `r${ri}c${ci}`;
+                  if (typeof cell === "string") {
+                    return (
+                      <td key={ci} className="px-1 py-2 text-center font-bold text-gray-700 border-r last:border-r-0 border-gray-200 break-words tabular-nums">
+                        {cell}
+                      </td>
+                    );
+                  }
+                  const token = placed[key] ? tokenById(placed[key]) : null;
+                  const isActive = multiSlot && targetKey() === key;
+                  return (
+                    <td key={ci} className="p-0.5 border-r last:border-r-0 border-gray-200">
+                      <button
+                        onClick={() => handleSlotTap(key)}
+                        aria-label={`空欄 ${ri + 1}行${ci + 1}列`}
+                        className={`w-full min-h-9 rounded-lg font-extrabold leading-tight break-words tabular-nums transition-colors
+                          ${token ? "bg-sky-500 text-white" : "border-2 border-dashed text-gray-300"}
+                          ${!token && isActive ? "border-sky-400 bg-sky-50" : ""}
+                          ${!token && !isActive ? "border-gray-300" : ""}
+                        `}
+                      >
+                        {token ? token.label : "？"}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <TokenBank tokens={tokens} usedIds={usedIds} onPick={placeToken} />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   複数選択（補助簿の選択など）
+   当てはまるものをすべて選ぶ。もう一度押すと選択を外す。
+--------------------------------------------------------- */
+
+function MultiSelectView({ q, answer, setAnswer }: Props<MultiSelectQuestion, string[]>) {
+  const toggle = (opt: string) => setAnswer(answer.includes(opt) ? answer.filter((x) => x !== opt) : [...answer, opt]);
+  return (
+    <div>
+      <p className="text-sm text-gray-400 font-bold mb-2">当てはまるものをすべて選ぼう</p>
+      <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+        <p className="text-base font-bold text-gray-800">{q.prompt}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {q.options.map((opt) => (
+          <button key={opt} onClick={() => toggle(opt)} aria-pressed={answer.includes(opt)} className={`py-2.5 px-2 text-sm ${choiceCls(answer.includes(opt))}`}>
+            {opt}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -269,6 +379,10 @@ export function QuestionRenderer({ q, answer, setAnswer }: { q: Question; answer
       return <JournalView q={q} answer={answer as JournalAnswer} setAnswer={setAnswer} />;
     case "journalBlank":
       return <JournalBlankView q={q} answer={answer as JournalBlankAnswer} setAnswer={setAnswer} />;
+    case "tableBlank":
+      return <TableBlankView q={q} answer={answer as JournalBlankAnswer} setAnswer={setAnswer} />;
+    case "multiSelect":
+      return <MultiSelectView q={q} answer={answer as string[]} setAnswer={setAnswer} />;
     default: {
       const unreachable: never = q;
       return unreachable;

@@ -1,11 +1,14 @@
 import type { BankEntry } from "../domain/course.ts";
 import { ACCOUNTS_NODES } from "./legacy/accounts.ts";
 import { JOURNAL_BLANK_NODES } from "./legacy/journalBlank.ts";
+import { FREQUENT_QUESTIONS } from "./questions/frequent.ts";
+import { NEW_TOPIC_QUESTIONS } from "./questions/newTopics.ts";
 import { TOPICS } from "./topics.ts";
 
 /* ---------------------------------------------------------
    問題バンク
-   旧コースのレッスンを論点に割り当てる。
+   旧コースのレッスンを論点に割り当てたものに、
+   src/content/questions/ の新しい問題（論点ID付き）を加える。
    章末チェックの問題は、セクション復習でだけ出す（reviewOnly）。
    場面ミックスと総合チェックの問題は、各論点と重複するため使わない。
 --------------------------------------------------------- */
@@ -93,4 +96,8 @@ function build(): BankEntry[] {
   return entries;
 }
 
-export const BANK: BankEntry[] = build();
+export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS];
+
+for (const e of BANK) {
+  if (!TOPICS[e.topicId]) throw new Error(`未定義の論点 ${e.topicId}（${e.question.id}）`);
+}

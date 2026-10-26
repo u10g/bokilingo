@@ -7,7 +7,7 @@ import type { Course, LessonNode, Question } from "./types.ts";
    これにより、TAC順と頻度順の2コースで同じ問題を共有する。
 
    セクション内のレッスンは自動で組み立てる。
-     小項目（論点）ごとに 5要素分類 ×n → 仕訳穴埋め ×n
+     小項目（論点）ごとに 5要素分類 ×n → 仕訳穴埋め ×n → 帳簿・表 ×n（ある論点のみ）
      → セクション復習（正答率70%以上で合格）
 --------------------------------------------------------- */
 
@@ -42,6 +42,7 @@ export interface BankEntry {
 
 export const CLASSIFY_LESSON_MAX = 10;
 export const JOURNAL_LESSON_MAX = 8; // 仕訳は1問の負荷が高いため少なめ
+export const TABLE_LESSON_MAX = 6; // 帳簿・表はさらに負荷が高い
 export const REVIEW_SIZE = 10;
 
 // 上限を超えない範囲で、なるべく均等な塊に分ける（11問 → 6問と5問）
@@ -56,11 +57,23 @@ export function chunkEvenly<T>(xs: readonly T[], max: number): T[][] {
 
 const NUMBERS = "①②③④⑤⑥⑦⑧⑨⑩";
 
+const LESSON_DESC = {
+  classify: "勘定科目が5要素のどれかを答えます。",
+  journal: "仕訳の空欄に勘定科目を入れます。",
+  table: "帳簿や表の空欄を埋めたり、当てはまるものを選んだりします。",
+};
+
 function lessonsForTopic(courseId: string, sectionId: string, topic: TopicDef, entries: BankEntry[]): LessonNode[] {
   const regular = entries.filter((e) => !e.reviewOnly).map((e) => e.question);
-  const groups: { kind: "classify" | "journal"; label: string; max: number; qs: Question[] }[] = [
+  const groups: { kind: "classify" | "journal" | "table"; label: string; max: number; qs: Question[] }[] = [
     { kind: "classify", label: "分類", max: CLASSIFY_LESSON_MAX, qs: regular.filter((q) => q.format === "classify") },
     { kind: "journal", label: "仕訳", max: JOURNAL_LESSON_MAX, qs: regular.filter((q) => q.format === "journalBlank") },
+    {
+      kind: "table",
+      label: "帳簿・表",
+      max: TABLE_LESSON_MAX,
+      qs: regular.filter((q) => q.format === "multiSelect" || q.format === "tableBlank"),
+    },
   ];
   return groups.flatMap((g) => {
     const chunks = chunkEvenly(g.qs, g.max);
@@ -70,7 +83,7 @@ function lessonsForTopic(courseId: string, sectionId: string, topic: TopicDef, e
       kind: g.kind,
       chapter: sectionId,
       unit: topic.title,
-      desc: g.kind === "classify" ? `${topic.desc} 勘定科目が5要素のどれかを答えます。` : `${topic.desc} 仕訳の空欄に勘定科目を入れます。`,
+      desc: `${topic.desc} ${LESSON_DESC[g.kind]}`,
       questions: qs,
     }));
   });
