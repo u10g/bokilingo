@@ -166,3 +166,21 @@ class SplitTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SplitLinesTest(unittest.TestCase):
+    def test_heading_digit_on_next_line(self):
+        qs = split_questions([["第 問", "1", "45点", "1", ",備品を購入した。", "2", ",土地を売却した。", "第2問"]])
+        q1 = [q for q in qs if q.daimon == 1 and q.no]
+        self.assertEqual([(q.no, q.prompt) for q in q1], [(1, ",備品を購入した。".lstrip(",")), (2, "土地を売却した。")])
+
+    def test_garbled_heading_next_to_dai(self):
+        qs = split_questions([["第1問", "1.備品を購入した。"], ["N問", "第", "(1)勘定に記入しなさい。"], ["3問", "1.減価償却を行う。"]])
+        self.assertEqual(sorted({q.daimon for q in qs}), [1, 2, 3])
+        self.assertEqual([q.daimon for q in qs if q.sub == 1], [2])
+
+    def test_daimon1_has_at_most_15(self):
+        lines = ["第1問"] + [f"{i}.取引{i}。" for i in range(1, 16)] + ["16.請求書の数字", "第2問"]
+        qs = split_questions([lines])
+        self.assertEqual(max(q.no or 0 for q in qs if q.daimon == 1), 15)
+
