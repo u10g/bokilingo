@@ -174,7 +174,11 @@ export function inventoryRows(method: InvMethod, txs: InvTx[]): InvRow[] {
   return rows;
 }
 
-const txLine = ([date, kind, qty, price]: InvTx) => `${date} ${kind} ${qty}個 @${yen(price)}円${kind === "売上" ? "（売価）" : ""}`;
+// 本試験と同じく「6月8日 仕入 30個 @¥160」の形で書く
+const txLine = ([date, kind, qty, price]: InvTx) => {
+  const [m, d] = date.split("/");
+  return `${m}月${d}日 ${kind} ${qty}個 @¥${yen(price)}${kind === "売上" ? "（売価）" : ""}`;
+};
 
 export function il(
   topicId: string,
@@ -214,7 +218,7 @@ export function il(
   if (answers.length !== blanks.length) throw new Error(`${id}: 同じセルを2回空欄に指定している`);
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
 
-  const prompt = [`${method}により、${item}の商品有高帳に記入する。`, ...txs.map(txLine)].join("\n");
+  const prompt = [`次の${item}に関する取引にもとづいて、${method}によって商品有高帳に記入する。`, ...txs.map(txLine)].join("\n");
   const entry = tb(topicId, id, prompt, `商品有高帳（${method}）${item}`, INV_COLUMNS, tableRows, [...answers, ...distractors], explanation);
   (entry.question as TableBlankQuestion).order = order;
   return entry;
@@ -228,7 +232,7 @@ export function ilSummary(topicId: string, id: string, method: InvMethod, item: 
     .reduce((t, r) => t + r.a, 0);
   const answers = [yen(sales), yen(cost), yen(sales - cost)];
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
-  const prompt = [`${method}により商品有高帳を記入している。${item}の当月の売上高・売上原価・売上総利益を求める。`, ...txs.map(txLine)].join("\n");
+  const prompt = [`次の${item}に関する取引にもとづいて、${method}によった場合の当月の売上高・売上原価・売上総利益を求める。`, ...txs.map(txLine)].join("\n");
   return tb(topicId, id, prompt, "売上総利益の計算", ["項目", "金額"], [
     ["売上高", blank(answers[0])],
     ["売上原価", blank(answers[1])],

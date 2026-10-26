@@ -35,8 +35,8 @@ export const PATTERN_NODES: LegacyNode[] = [
     id: "pn2", title: "交換取引の仕訳", kind: "training", chapter: "pat1",
     desc: "資産・負債の入れ替えだけで完結する仕訳です。",
     questions: [
-      { id: "pn2-1", format: "journal", prompt: "現金80,000円を当座預金に預け入れた。", debitAccount: "当座預金", debitAmount: 80000, creditAccount: "現金", creditAmount: 80000, explanation: "資産(現金)が資産(当座預金)に入れ替わるだけの交換取引です。" },
-      { id: "pn2-2", format: "journal", prompt: "当座預金から現金50,000円を引き出した。", debitAccount: "現金", debitAmount: 50000, creditAccount: "当座預金", creditAmount: 50000, explanation: "資産どうしの入れ替えなので交換取引です。" },
+      { id: "pn2-1", format: "journal", prompt: "現金¥80,000を当座預金に預け入れた。", debitAccount: "当座預金", debitAmount: 80000, creditAccount: "現金", creditAmount: 80000, explanation: "資産(現金)が資産(当座預金)に入れ替わるだけの交換取引です。" },
+      { id: "pn2-2", format: "journal", prompt: "当座預金から現金¥50,000を引き出した。", debitAccount: "現金", debitAmount: 50000, creditAccount: "当座預金", creditAmount: 50000, explanation: "資産どうしの入れ替えなので交換取引です。" },
       { id: "pn2-3", format: "journal", prompt: "銀行から200,000円を借り入れ、現金で受け取った。", debitAccount: "現金", debitAmount: 200000, creditAccount: "借入金", creditAmount: 200000, explanation: "資産の増加と負債の増加の組み合わせで、収益・費用は発生しません。" },
       { id: "pn2-4", format: "journal", prompt: "買掛金30,000円を現金で支払った。", debitAccount: "買掛金", debitAmount: 30000, creditAccount: "現金", creditAmount: 30000, explanation: "負債の減少と資産の減少の組み合わせで、収益・費用は発生しません。" },
     ],
@@ -70,7 +70,7 @@ export const PATTERN_NODES: LegacyNode[] = [
       { id: "pn5-1", format: "journal", prompt: "出張する従業員に旅費の概算額20,000円を現金で前渡しした。", debitAccount: "仮払金", debitAmount: 20000, creditAccount: "現金", creditAmount: 20000, explanation: "内容や金額が未確定な支出はいったん仮払金で処理します。" },
       { id: "pn5-2", format: "journal", prompt: "前渡ししていた旅費の仮払金20,000円について、実際にかかった旅費が20,000円であったとの報告を受けた。", debitAccount: "旅費交通費", debitAmount: 20000, creditAccount: "仮払金", creditAmount: 20000, explanation: "内容が確定したので、仮払金から旅費交通費（費用）に振り替えます。" },
       { id: "pn5-3", format: "journal", prompt: "内容不明の入金3,000円があり仮受金として処理していたが、これは売掛金の回収であることが判明した。", debitAccount: "仮受金", debitAmount: 3000, creditAccount: "売掛金", creditAmount: 3000, explanation: "内容が判明したので、仮受金から売掛金に振り替えます。" },
-      { id: "pn5-4", format: "journal", prompt: "商品を注文し、内金として10,000円を現金で支払った。", debitAccount: "前払金", debitAmount: 10000, creditAccount: "現金", creditAmount: 10000, explanation: "商品を受け取る前の内金は前払金（資産）で処理します。" },
+      { id: "pn5-4", format: "journal", prompt: "仕入先に商品を注文し、内金として¥10,000を現金で支払った。", debitAccount: "前払金", debitAmount: 10000, creditAccount: "現金", creditAmount: 10000, explanation: "商品を受け取る前の内金は前払金（資産）で処理します。" },
     ],
   },
 ];

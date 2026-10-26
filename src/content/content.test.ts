@@ -34,6 +34,12 @@ describe("問題バンク", () => {
     expect([...formats].sort()).toEqual(["classify", "journalBlank", "ledgerAccount", "multiSelect", "tableBlank"]);
   });
 
+  // 問題文の書き方は本試験にそろえる（docs/topic-map.md「問題文の構造」）
+  it("問題文の金額は¥表記、語尾は「こととした」", () => {
+    const bad = BANK.map((e) => e.question).filter((q) => /\d円|ことにした/.test(q.prompt));
+    expect(bad.map((q) => `${q.id}: ${q.prompt}`)).toEqual([]);
+  });
+
   it("すべての論点に問題がある", () => {
     const used = new Set(BANK.map((e) => e.topicId));
     expect(Object.keys(TOPICS).filter((t) => !used.has(t))).toEqual([]);
