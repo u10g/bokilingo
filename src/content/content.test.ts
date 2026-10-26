@@ -250,8 +250,13 @@ describe("勘定記入（ledgerAccount）", () => {
     expect(sum(q.debit)).toBe(sum(q.credit));
     if (q.total !== undefined) expect(num(text(q.total))).toBe(sum(q.debit));
 
-    for (const s of slots) expect(q.choices).toContain(s.answer);
-    expect(dupes(q.choices)).toEqual([]);
+    // 同じ語の空欄が複数ある勘定（再振替と見越しの相手科目など）では、その数だけ同じ選択肢を置く
+    const count = (xs: string[]) => xs.reduce<Record<string, number>>((m, x) => ({ ...m, [x]: (m[x] ?? 0) + 1 }), {});
+    const need = count(slots.map((s) => s.answer));
+    const have = count(q.choices);
+    for (const [label, n] of Object.entries(need)) expect(have[label] ?? 0, label).toBeGreaterThanOrEqual(n);
+    for (const [label, n] of Object.entries(have)) expect(n, label).toBeLessThanOrEqual(Math.max(1, need[label] ?? 0));
+    if (q.order) expect([...q.order].sort()).toEqual(slots.map((x) => x.key).sort());
 
     const right = { slots: Object.fromEntries(slots.map((s) => [s.key, tokenId(q, q.choices.indexOf(s.answer))])) };
     expect(isAnswerReady(q, right)).toBe(true);

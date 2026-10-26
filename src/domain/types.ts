@@ -88,6 +88,7 @@ export interface LedgerAccountQuestion extends QuestionBase {
   credit: LedgerEntry[];
   total?: TableCell; // 締め切ったときの合計（借方・貸方で同額）
   choices: string[];
+  order?: string[]; // 空欄を埋める順（キーは d0n・c1a・t）。省略時は借方→貸方→合計
 }
 
 export type Question =
