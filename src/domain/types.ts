@@ -135,7 +135,8 @@ export interface StoryAccount {
 // 財務諸表の表示科目の行。勘定科目（accounts）の整理後の金額を合計して表示する。
 // 例：前払費用 ＝ 前払保険料 ＋ 前払家賃、売上原価 ＝ 仕入
 export interface StoryLine {
-  label: string; // 表示科目
+  label: string; // 表示科目（ストーリー内で一意）
+  display?: string; // 表示名が label と違うとき。例：建物と備品の「減価償却累計額」
   statement: "PL" | "BS";
   accounts: string[]; // 同じ側（借・貸）の科目だけを入れる
   contra?: boolean; // 資産から差し引く科目（貸倒引当金・減価償却累計額）。△を付けて資産の部に出す

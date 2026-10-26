@@ -11,7 +11,7 @@ export const WORKSHEET_STORY: Story = {
   id: "story-ws-1",
   topicId: "worksheet",
   table: "worksheet",
-  title: "精算表ストーリー",
+  title: "精算表ストーリー①",
   intro: "ボキ商事の決算日（3月31日）です。決算整理前の残高試算表に、決算整理事項を1つずつ修正記入して、精算表を完成させましょう。",
   accounts: [
     // 決算整理前残高試算表（資産・負債・純資産・収益・費用の順）

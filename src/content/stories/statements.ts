@@ -13,7 +13,7 @@ export const STATEMENTS_STORY: Story = {
   id: "story-fs-1",
   topicId: "fs-preparation",
   table: "statements",
-  title: "財務諸表ストーリー",
+  title: "財務諸表ストーリー①",
   intro:
     "ミカン商事の決算日（3月31日）です。決算整理前の残高試算表の金額で、損益計算書と貸借対照表の下書きができています。決算整理事項を1つずつ反映して、財務諸表を完成させましょう。",
   accounts: [

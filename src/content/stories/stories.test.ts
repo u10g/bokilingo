@@ -20,6 +20,9 @@ describe("ストーリーのデータ", () => {
     ["story-ws-1", 1050000, 973000, 77000],
     ["story-tb-1", 1154000, 1118600, 35400],
     ["story-fs-1", 1340000, 1186500, 153500],
+    ["story-ws-2", 1583600, 1479000, 104600],
+    ["story-tb-2", 1342000, 1176500, 165500],
+    ["story-fs-2", 1256000, 1130500, 125500],
   ])("%s: 解説の収益・費用・当期純利益", (id, revenue, expense, net) => {
     const s = STORIES.find((x) => x.id === id)!;
     const adj = adjustmentsUpTo(s, s.steps.length);

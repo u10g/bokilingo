@@ -12,7 +12,7 @@ export const ADJUSTED_TB_STORY: Story = {
   id: "story-tb-1",
   topicId: "fs-preparation",
   table: "adjustedTb",
-  title: "整理後試算表ストーリー",
+  title: "整理後試算表ストーリー①",
   intro:
     "リンゴ商事の決算日（3月31日）です。決算整理事項を1つずつ反映して、決算整理後残高試算表を完成させましょう。修正記入の列はないので、動いた科目の残高をその場で書き換えます。",
   accounts: [
