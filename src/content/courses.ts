@@ -13,12 +13,12 @@ import { TOPICS } from "./topics.ts";
 --------------------------------------------------------- */
 
 // TAC出版「簿記の教科書 日商3級」の章順（docs/topic-map.md）。
-// 問題がまだない章（01 簿記の基礎、08 試算表、10 決算手続I）は、論点を追加したら差し込む
+// 問題がまだない章（01 簿記の基礎、08 試算表）は、論点を追加したら差し込む
 const TAC: CourseDef = {
   id: "tac",
   title: "TAC順コース",
   subtitle: "教科書の章の順番で学ぶ",
-  stubNote: "簿記の基礎・試算表・精算表の章は準備中",
+  stubNote: "簿記の基礎・試算表の章は準備中",
   sections: [
     { id: "s1", title: "CHAPTER 02", subtitle: "商品売買", bg: "bg-emerald-500", sub: "text-emerald-100", topicIds: ["sales-basic", "sales-extra"] },
     { id: "s2", title: "CHAPTER 03", subtitle: "現金預金", bg: "bg-sky-500", sub: "text-sky-100", topicIds: ["cash-deposit", "cash-short"] },
@@ -28,9 +28,10 @@ const TAC: CourseDef = {
     { id: "s6", title: "CHAPTER 06 後半", subtitle: "その他の取引（収益・費用・消費税・株式・訂正）", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["services", "expenses", "consumption-tax", "equity", "correction"] },
     { id: "s-ch07", title: "CHAPTER 07", subtitle: "帳簿", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["subledger", "inventory-ledger"] },
     { id: "s-ch09", title: "CHAPTER 09", subtitle: "伝票と仕訳日計表", bg: "bg-cyan-600", sub: "text-cyan-100", topicIds: ["slips"] },
+    { id: "s-ch10", title: "CHAPTER 10", subtitle: "決算手続I（精算表）", bg: "bg-lime-600", sub: "text-lime-100", topicIds: ["worksheet"] },
     { id: "s7", title: "CHAPTER 11 前半", subtitle: "決算手続II（振替・貸倒れ・減価償却）", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts", "depreciation"] },
     { id: "s8", title: "CHAPTER 11 後半", subtitle: "決算手続II（経過勘定・法人税等）", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["accruals", "corporate-tax"] },
-    { id: "s-ch12", title: "CHAPTER 12", subtitle: "決算手続III（財務諸表）", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["statements"] },
+    { id: "s-ch12", title: "CHAPTER 12", subtitle: "決算手続III（財務諸表）", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["statements", "fs-preparation"] },
   ],
 };
 
@@ -50,6 +51,7 @@ const EXAM: CourseDef = {
     { id: "e5b", title: "第1問 その他", subtitle: "訂正仕訳と伝票", bg: "bg-cyan-600", sub: "text-cyan-100", topicIds: ["correction", "slips"] },
     { id: "e6", title: "第2問・第3問 1", subtitle: "決算の振替と貸倒れ", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts"] },
     { id: "e7", title: "第2問・第3問 2", subtitle: "減価償却と経過勘定", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["depreciation", "accruals"] },
+    { id: "e9", title: "第3問 決算", subtitle: "精算表と財務諸表の作成", bg: "bg-lime-600", sub: "text-lime-100", topicIds: ["worksheet", "fs-preparation"] },
     { id: "e8", title: "第2問 帳簿と財務諸表", subtitle: "補助簿・商品有高帳・財務諸表", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["subledger", "inventory-ledger", "statements"] },
   ],
 };
