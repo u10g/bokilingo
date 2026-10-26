@@ -50,3 +50,7 @@ python3 -m unittest discover -s tools/pdf   # PDF読み込みツールのテス�
 ## 取り扱い注意
 
 参考書のPDFやOCRの結果は著作物のためコミットしない（`references/` と `*.pdf` は `.gitignore` 済み）。問題文はすべてオリジナルで作成する。
+
+## クレジット
+
+ファビコン（`public/icon.svg`）は、[Font Awesome Free](https://fontawesome.com) の receipt アイコン（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)、Copyright Fonticons, Inc.）を緑の角丸の背景に重ねたもの。
