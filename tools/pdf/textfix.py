@@ -117,6 +117,7 @@ QUESTION_NO = re.compile(
     r"^\s*(\d{1,2}|[〇O])\s*(?:[.．・\-,，\"”]\s*(?!\d{3}|\d{1,2},\d{3})|(?=[^\d\s.,．、月日年か%％円]))"
 )
 MAX_SKIP = 2  # 設問番号の読み落としを、この数まで飛ばして追従する
+DAIMON1_MAX = 15  # 第1問の設問数（現行の出題形式）
 
 
 def match_question_no(line: str, expected: int) -> tuple[int, int] | None:
@@ -193,6 +194,48 @@ class Question:
         return "".join(x.strip() for x in self.lines)
 
 
+# 行が分かれた見出しと設問番号（スキャンの読み順で、数字だけが別の行になる）
+_HEADING_NO_DIGIT = re.compile(r"^\s*第\s*問\s*$")  # 「第 問」の次の行が「1」
+_HEADING_ODD_DIGIT = re.compile(r"^\s*[^\d\s第回]\s*問\s*$")  # 「N問」の前後の行が「第」だけ
+_LONE_DIGIT = re.compile(r"^\s*([1-9]|1[0-9])\s*$")
+_CONTINUES_NO = re.compile(r"^\s*[,，.．・\-]")  # 「1」の次の行が「,新田商店に…」
+
+
+def merge_split_lines(pages: list[list[str]]) -> list[list[str]]:
+    """分かれて読まれた大問の見出しと設問番号を、1行に戻す。
+
+    - 「第 問」＋「1」 → 「第1問」
+    - 「N問」＋「第」（数字が化けた見出し） → 直前の大問の次の番号の見出し
+    - 「1」＋「,新田商店に…」 → 「1,新田商店に…」
+    """
+    last = 0
+    out: list[list[str]] = []
+    for lines in pages:
+        ls = [x for x in lines]
+        res: list[str] = []
+        i = 0
+        while i < len(ls):
+            line, nxt = ls[i], (ls[i + 1] if i + 1 < len(ls) else "")
+            prev = res[-1] if res else ""
+            if _HEADING_NO_DIGIT.match(line) and _LONE_DIGIT.match(nxt):
+                line, i = f"第{nxt.strip()}問", i + 1
+            elif _HEADING_ODD_DIGIT.match(line) and (nxt.strip() == "第" or prev.strip() == "第"):
+                if prev.strip() == "第":
+                    res.pop()
+                elif nxt.strip() == "第":
+                    i += 1
+                line = f"第{last + 1}問" if last < 5 else line
+            elif _LONE_DIGIT.match(line) and _CONTINUES_NO.match(nxt):
+                line, i = line.strip() + nxt.strip(), i + 1
+            d = daimon_number(line)
+            if d is not None:
+                last = d
+            res.append(line)
+            i += 1
+        out.append(res)
+    return out
+
+
 def split_questions(pages: list[list[str]]) -> list[Question]:
     """補正済みの行（ページごと）を、大問・設問単位にまとめる。
 
@@ -211,7 +254,7 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
             out.append(cur)
         cur = None
 
-    for page_no, lines in enumerate(pages, start=1):
+    for page_no, lines in enumerate(merge_split_lines(pages), start=1):
         for raw in lines:
             line = normalize_line(raw)
             if not line.strip():
@@ -246,6 +289,9 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
                 line = line[sm.end():]
 
             qm = match_question_no(line, expected_no)
+            # 第1問は15問まで。それより後の「16」などは、問題文中の表（請求書など）の数字
+            if qm and daimon == 1 and qm[0] > DAIMON1_MAX:
+                qm = None
             if qm:
                 no, end = qm
                 flush()
