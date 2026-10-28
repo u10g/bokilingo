@@ -118,6 +118,9 @@ QUESTION_NO = re.compile(
 )
 MAX_SKIP = 2  # 設問番号の読み落としを、この数まで飛ばして追従する
 DAIMON1_MAX = 15  # 第1問の設問数（現行の出題形式）
+# 第3問の柱書き（「次の(1)決算整理前残高試算表および(2)決算整理事項等にもとづいて…」）。見出しが読めないときに使う
+DAIMON3_LEAD = re.compile(r"次の.{0,30}(決算整理|残高試算表)")
+DAIMON3_LEAD_LINES = 6  # ページの先頭から何行以内にあれば柱書きとみなすか
 
 
 def match_question_no(line: str, expected: int) -> tuple[int, int] | None:
@@ -199,6 +202,10 @@ _HEADING_NO_DIGIT = re.compile(r"^\s*第\s*問\s*$")  # 「第 問」の次の�
 _HEADING_ODD_DIGIT = re.compile(r"^\s*[^\d\s第回]\s*問\s*$")  # 「N問」の前後の行が「第」だけ
 _LONE_DIGIT = re.compile(r"^\s*([1-9]|1[0-9])\s*$")
 _CONTINUES_NO = re.compile(r"^\s*[,，.．・\-]")  # 「1」の次の行が「,新田商店に…」
+# 第3問の決算整理事項を「①②…」で番号付けする回がある。番号だけが1行になることも多い
+_CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"
+_LONE_CIRCLED = re.compile(rf"^\s*['’]?\s*([{_CIRCLED}])\s*$")
+_LEADING_CIRCLED = re.compile(rf"^\s*['’]?\s*([{_CIRCLED}])")
 
 
 def merge_split_lines(pages: list[list[str]]) -> list[list[str]]:
@@ -227,6 +234,8 @@ def merge_split_lines(pages: list[list[str]]) -> list[list[str]]:
                 line = f"第{last + 1}問" if last < 5 else line
             elif _LONE_DIGIT.match(line) and _CONTINUES_NO.match(nxt):
                 line, i = line.strip() + nxt.strip(), i + 1
+            elif _LONE_CIRCLED.match(line) and nxt.strip() and not _LONE_CIRCLED.match(nxt):
+                line, i = line.strip() + nxt.strip(), i + 1
             d = daimon_number(line)
             if d is not None:
                 last = d
@@ -244,6 +253,7 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
     """
     out: list[Question] = []
     daimon: int | None = None
+    daimon_page = 0  # 今の大問が始まったページ
     expected_no = 1
     expected_sub = 1
     cur: Question | None = None
@@ -255,28 +265,42 @@ def split_questions(pages: list[list[str]]) -> list[Question]:
         cur = None
 
     for page_no, lines in enumerate(merge_split_lines(pages), start=1):
-        for raw in lines:
+        for line_no, raw in enumerate(lines):
             line = normalize_line(raw)
             if not line.strip():
                 continue
 
             d = daimon_number(line)
+            # 見出しが読めなかったときの補い。
+            # 第2問：第1問の15問の後に小問「(1)」が来たら、第2問が始まっている
+            # 第3問：第2問の次のページの先頭に「次の…決算整理…にもとづいて」があれば、第3問の柱書き
+            if d is None and daimon == 1 and expected_no > DAIMON1_MAX and SUB_NO.search(line):
+                daimon, daimon_page, expected_no, expected_sub = 2, page_no, 1, 1
+                flush()
+            if d is None and daimon == 2 and page_no > daimon_page and line_no < DAIMON3_LEAD_LINES and DAIMON3_LEAD.search(line):
+                d = 3
             if d is not None and d != daimon:
                 # 「⑴」が見出しより先に読まれた場合は、その小問ごと新しい大問に移す
                 if cur and cur.sub == 1 and cur.page == page_no and len(cur.lines) <= 2 and (daimon is None or d > daimon):
-                    daimon, expected_no, expected_sub = d, 1, 2
+                    daimon, daimon_page, expected_no, expected_sub = d, page_no, 1, 2
                     cur.daimon = d
-                    cur.lines.append(line[DAIMON.search(line).end():])
+                    m = DAIMON.search(line)
+                    cur.lines.append(line[m.end():] if m else line)
                     continue
                 flush()
                 # 大問番号が戻ったら解答・解説のページに入ったとみなし、そこで打ち切る
                 if daimon is not None and d < daimon:
                     return _finish(out)
-                daimon, expected_no, expected_sub = d, 1, 1
+                daimon, daimon_page, expected_no, expected_sub = d, page_no, 1, 1
                 cur = Question(daimon, None, page_no)  # 大問の柱書き
-                cur.lines.append(line[DAIMON.search(line).end():])
+                m = DAIMON.search(line)
+                cur.lines.append(line[m.end():] if m else line)
                 continue
 
+
+            # 第3問の「①」は設問番号「1.」として読む
+            if daimon == 3:
+                line = _LEADING_CIRCLED.sub(lambda m: f"{_CIRCLED.index(m.group(1)) + 1}.", line, count=1)
 
             sm = SUB_NO.search(line)
             sub = (int(sm.group(1)) if sm.group(1) else "⑴⑵⑶".index(sm.group(2)) + 1) if sm else None

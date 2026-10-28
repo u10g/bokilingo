@@ -9,6 +9,7 @@
   python3 tools/pdf/prep.py list references/tac-mondai-02-q  # 問題を1行ずつの要約で表示
   python3 tools/pdf/prep.py tag                              # 論点を自動で付け、要確認の問題だけ表示
   python3 tools/pdf/prep.py tag --set tac-mondai-02-1-7=notes:電子記録債権の発生  # 手で論点を付ける
+  python3 tools/pdf/prep.py tag --set tac-mondai-02-1-9=closing --not-dup tac-mondai-02-1-9  # 重複の誤判定を取り消す
   python3 tools/pdf/prep.py stats --write                    # 出題数を集計し、docs/topic-map.md を更新
   python3 tools/pdf/prep.py crop tac-mondai-02-q.pdf --page 8 [--table]  # ページ（の表部分）を画像に
 
@@ -36,9 +37,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from tagging import (  # noqa: E402
     FORMAT_TOPICS,
+    NOT_DUP,
     counted,
     find_duplicates,
     frequency,
+    is_dup,
     load_topics,
     merge_tags,
     read_tags,
@@ -283,7 +286,7 @@ def cmd_status(args: argparse.Namespace) -> None:
             f"| {d.name} | {meta.get('scope', 'current')} | {sum(1 for q in targets if q['daimon'] == 1)}"
             f" | {sum(1 for q in targets if 'missing' in q['flags'])}"
             f" | {sum(1 for r in rows if r['by'] in ('auto', 'manual'))}/{len(targets)}"
-            f" | {sum(1 for r in rows if r['by'] == 'review')} | {sum(1 for r in rows if r['dup_of'])} |"
+            f" | {sum(1 for r in rows if r['by'] == 'review')} | {sum(1 for r in rows if is_dup(r))} |"
         )
 
 
@@ -304,9 +307,13 @@ def cmd_tag(args: argparse.Namespace) -> None:
     topics = load_topics(TOPICS_TS)
     rows = read_tags(tags_path)
 
-    if args.set:
+    if args.set or args.not_dup:
         by_id = {r["id"]: r for r in rows}
-        for spec in args.set:
+        for qid in args.not_dup or []:
+            if qid not in by_id:
+                sys.exit(f"{qid}: tags.csv にない（先に tag を実行する）")
+            by_id[qid].update({"dup_of": NOT_DUP})
+        for spec in args.set or []:
             qid, topic, note = parse_set(spec)
             if qid not in by_id:
                 sys.exit(f"{qid}: tags.csv にない（先に tag を実行する）")
@@ -314,7 +321,7 @@ def cmd_tag(args: argparse.Namespace) -> None:
                 sys.exit(f"{topic}: 論点マスタ（src/content/topics.ts）にない論点ID")
             by_id[qid].update({"topic": topic, "by": "manual", **({"note": note} if note else {})})
         write_tags(tags_path, rows)
-        print(f"{len(args.set)}件を手で設定した → {tags_path}")
+        print(f"{len(args.set or [])}件を手で設定し、{len(args.not_dup or [])}件を重複ではないとした → {tags_path}")
         return
 
     all_qs: list[dict] = []
@@ -502,6 +509,7 @@ def main() -> None:
     t = sub.add_parser("tag", help="論点を自動で付け、要確認の問題だけを表示する")
     t.add_argument("dir", nargs="*", help="省略すると取り込み済みのすべての本")
     t.add_argument("--set", action="append", metavar="ID=論点[:要約]", help="手で論点を付ける（論点を - にすると集計から外す）")
+    t.add_argument("--not-dup", action="append", metavar="ID", help="文が似ていて重複と判定されたが、別の問題だと確認したもの（--set と一緒に使う）")
     t.add_argument("--eval", action="store_true", help="手で付けた論点と自動の結果を照合する")
     t.add_argument("--width", type=int, default=80)
     t.add_argument("--out", default=DEFAULT_OUT)

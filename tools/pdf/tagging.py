@@ -186,14 +186,22 @@ def sort_key(r: dict) -> tuple:
     return (r["book"], num(r["kai"]), num(r["daimon"]), num(r["sub"]), num(r["no"]))
 
 
+NOT_DUP = "-"  # dup_of にこの値があれば「確認して、重複ではないとした」
+
+
+def is_dup(r: dict) -> bool:
+    return r.get("dup_of", "") not in ("", NOT_DUP)
+
+
 def merge_tags(old: list[dict], new: list[dict]) -> list[dict]:
     """新しく付けた自動タグを既存の表に反映する。手で付けたタグ（by=manual）は上書きしない。"""
     by_id = {r["id"]: r for r in old}
     for r in new:
         cur = by_id.get(r["id"])
         if cur and cur.get("by") == "manual":
-            # 抽出し直しで変わりうる項目だけ更新する
-            cur.update({k: r[k] for k in ("cited", "dup_of", "scope") if k in r})
+            # 抽出し直しで変わりうる項目だけ更新する。重複ではないと確認したもの（NOT_DUP）はそのまま
+            keys = ("cited", "scope") if cur.get("dup_of") == NOT_DUP else ("cited", "dup_of", "scope")
+            cur.update({k: r[k] for k in keys if k in r})
             continue
         by_id[r["id"]] = {**(cur or {}), **r}
     return list(by_id.values())
@@ -206,7 +214,7 @@ def merge_tags(old: list[dict], new: list[dict]) -> list[dict]:
 
 def counted(rows: list[dict], topic_ids: set[str]) -> list[dict]:
     """集計の対象にする行。要確認・重複・論点なし・範囲外（論点マスタにない論点）を除く。"""
-    return [r for r in rows if r.get("by") in ("auto", "manual") and r.get("topic") in topic_ids and not r.get("dup_of")]
+    return [r for r in rows if r.get("by") in ("auto", "manual") and r.get("topic") in topic_ids and not is_dup(r)]
 
 
 def frequency(rows: list[dict], topic_ids: set[str], daimon: str = "1") -> list[tuple[str, list[dict]]]:
