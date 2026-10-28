@@ -184,3 +184,17 @@ class SplitLinesTest(unittest.TestCase):
         qs = split_questions([lines])
         self.assertEqual(max(q.no or 0 for q in qs if q.daimon == 1), 15)
 
+    def test_unread_headings_of_daimon2_and_3(self):
+        first = ["第1問"] + [f"{i}.取引{i}。" for i in range(1, 16)]
+        second = ["(1)次の資料にもとづいて勘定に記入しなさい。", "1.4月1日の取引。", "(2)次の文の空欄を埋めなさい。", "1.用語の問。"]
+        third = ["ゴミ", "次の(1)決算整理前残高試算表および(2)決算整理事項等にもとづいて、貸借対照表を完成しなさい。", "1.期末商品棚卸高は¥1,000である。", "2.消費税の処理を行う。"]
+        qs = split_questions([first, second, third])
+        self.assertEqual(max(q.no or 0 for q in qs if q.daimon == 1), 15)
+        self.assertEqual(sorted({q.sub for q in qs if q.daimon == 2} - {None}), [1, 2])
+        self.assertEqual([q.no for q in qs if q.daimon == 3 and q.no], [1, 2])
+
+    def test_circled_numbers_in_daimon3(self):
+        qs = split_questions([["第3問", "次の決算整理事項等にもとづいて答えなさい。", "①", "売掛金の入金が未記帳である。", "'②仮払金を精算する。", "③", "④", "。期末商品棚卸高は¥1,000である。"]])
+        self.assertEqual([(q.no, q.prompt) for q in qs if q.daimon == 3 and q.no and q.prompt][:2], [(1, "売掛金の入金が未記帳である。"), (2, "仮払金を精算する。")])
+        self.assertIn(4, [q.no for q in qs if q.daimon == 3])
+

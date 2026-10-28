@@ -11,7 +11,7 @@ PDFと、そこから抽出した本文は著作物のためコミットしな�
 | 補正 | 自動調整をオン | 見開きの隣のページが混入しなくなり、ファイルも軽くなる |
 | 単位 | 問題と解答でファイルを分ける | 解答ページは原則として読まないため |
 
-ファイル名は `<書名>-<回>-<q|a>.pdf` とする（例：`tac-mondai-02-q.pdf`）。
+ファイル名は `<書名>-<回>-<q|a>.pdf` とする（例：`tac-mondai-02-q.pdf`）。複数回を1つのPDFにまとめて送られた場合は、`pdfseparate` と `pdfunite` で回ごとのファイルに分けてから取り込む。
 OCRは見出しの回数を読み違える（「第2回」→「第4回」）ため、出典の回はファイル名から取る。
 
 旧範囲（2022年度適用の出題区分表より前）の本は、書名を変えて（例：`tachonshi2021-01-q.pdf`）`--scope old` で取り込む。
@@ -35,6 +35,7 @@ python3 tools/pdf/prep.py status                                     # 本ごと
 python3 tools/pdf/prep.py tag                                        # 自動タグ。要確認の問題だけ1行ずつ表示する
 python3 tools/pdf/prep.py tag --set tachonshi-02-1-7=notes:電子記録債権の発生記録
 python3 tools/pdf/prep.py tag --set tachonshi2021-01-1-3=-           # 範囲外として集計から外す
+python3 tools/pdf/prep.py tag --not-dup tachonshi-11-1-12           # 文が似ているだけで別の問題（重複の誤判定を取り消す）
 python3 tools/pdf/prep.py stats --write
 python3 tools/pdf/prep.py crop references/pdf/tachonshi-03-q.pdf --page 4 --dpi 90  # 読み落としの確認
 ```

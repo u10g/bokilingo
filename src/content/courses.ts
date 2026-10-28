@@ -37,19 +37,19 @@ const TAC: CourseDef = {
   ],
 };
 
-// 第1問の出題数（docs/topic-map.md、本試験問題集8回分）の多い論点から並べる。セクションIDは並べ替えても変えない（復習の記録を残すため）。
+// 第1問の出題数（docs/topic-map.md、本試験問題集12回分）の多い論点から並べる。セクションIDは並べ替えても変えない（復習の記録を残すため）。
 // 決算系の論点は第1問での出題が少なく、第2問・第3問で必ず問われるため後半に置く
 const EXAM: CourseDef = {
   id: "exam",
   title: "本試験頻度順コース",
   subtitle: "第1問の頻出論点から、第2問・第3問へ",
-  stubNote: "並び順は本試験問題集8回分の出題数にもとづく（回を追加したら更新）",
+  stubNote: "並び順は本試験問題集12回分の出題数にもとづく（回を追加したら更新）",
   sections: [
     { id: "e1", title: "第1問 頻出 1", subtitle: "商品売買", bg: "bg-emerald-500", sub: "text-emerald-100", topicIds: ["sales-extra", "sales-basic"] },
     { id: "e4", title: "第1問 頻出 2", subtitle: "固定資産と債権・債務", bg: "bg-amber-600", sub: "text-amber-100", topicIds: ["fixed-assets", "notes", "loans"] },
-    { id: "e3", title: "第1問 頻出 3", subtitle: "経費・給料・賃借", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["expenses", "payroll", "rent", "services"] },
+    { id: "e3", title: "第1問 頻出 3", subtitle: "給料・経費・賃借", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["payroll", "expenses", "rent", "services"] },
     { id: "e2", title: "第1問 頻出 4", subtitle: "現金・預金と仮勘定", bg: "bg-sky-500", sub: "text-sky-100", topicIds: ["cash-deposit", "suspense", "cash-short"] },
-    { id: "e5", title: "第1問 頻出 5", subtitle: "税金と株式", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["consumption-tax", "corporate-tax", "equity"] },
+    { id: "e5", title: "第1問 頻出 5", subtitle: "税金と株式", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["consumption-tax", "equity", "corporate-tax"] },
     { id: "e5b", title: "第1問 その他", subtitle: "訂正仕訳と伝票", bg: "bg-cyan-600", sub: "text-cyan-100", topicIds: ["correction", "slips"] },
     { id: "e6", title: "第2問・第3問 1", subtitle: "決算の振替と貸倒引当金", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts-amount", "bad-debts-refill", "bad-debts-entry", "bad-debts-writeoff", "bad-debts-recovery"] },
     { id: "e7", title: "第2問・第3問 2", subtitle: "減価償却", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["depreciation-amount", "depreciation-monthly", "depreciation-entry", "depreciation-sale", "depreciation-midyear"] },

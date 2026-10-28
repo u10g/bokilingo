@@ -7,7 +7,7 @@
 import unittest
 
 from prep import parse_set, render_stats
-from tagging import find_duplicates, frequency, merge_tags, rounds_by_topic, suggest
+from tagging import NOT_DUP, counted, find_duplicates, frequency, merge_tags, rounds_by_topic, suggest
 
 
 class SuggestTest(unittest.TestCase):
@@ -76,6 +76,12 @@ class TagTableTest(unittest.TestCase):
         old = [row("a", "loans", by="manual")]
         merged = merge_tags(old, [row("a", "expenses", dup_of="x")])
         self.assertEqual((merged[0]["topic"], merged[0]["by"], merged[0]["dup_of"]), ("loans", "manual", "x"))
+
+    def test_not_dup_survives_retagging_and_is_counted(self):
+        old = [row("a", "closing", by="manual", dup_of=NOT_DUP)]
+        merged = merge_tags(old, [row("a", "equity", dup_of="x")])
+        self.assertEqual(merged[0]["dup_of"], NOT_DUP)
+        self.assertEqual(len(counted(merged, {"closing"})), 1)
 
     def test_auto_is_updated(self):
         merged = merge_tags([row("a", "loans")], [row("a", "expenses")])
