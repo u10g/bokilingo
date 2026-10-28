@@ -3,6 +3,7 @@ import { correctAnswerText } from "../domain/questions.ts";
 import type { Question } from "../domain/types.ts";
 
 // レッスンと復習で共通の、判定ボタンとフィードバックバー
+// 問題が長くてもボタンが画面内に残るよう、画面の下に固定する。解説が長いときは解説だけをスクロールする
 export function AnswerFooter({
   question,
   ready,
@@ -23,9 +24,9 @@ export function AnswerFooter({
   onContinue: () => void;
 }) {
   return (
-    <div className={`px-5 py-4 border-t ${checked ? (correct ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100") : "bg-gray-50 border-gray-100"}`}>
+    <div className={`sticky bottom-0 z-10 px-5 py-4 border-t ${checked ? (correct ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100") : "bg-gray-50 border-gray-100"}`}>
       {checked && (
-        <div className="mb-3" role="status">
+        <div className="mb-3 max-h-[40vh] overflow-y-auto" role="status">
           <p className={`font-extrabold flex items-center gap-2 ${correct ? "text-green-600" : "text-red-500"}`}>
             {correct ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
             {correct ? correctLabel : wrongLabel}
