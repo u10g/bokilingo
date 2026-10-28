@@ -186,14 +186,12 @@ export function correctAnswerText(q: Question): string {
   switch (q.format) {
     case "journal":
       return `借方) ${q.debitAccount} ${q.debitAmount.toLocaleString()}円 ／ 貸方) ${q.creditAccount} ${q.creditAmount.toLocaleString()}円`;
-    case "journalBlank":
-      return q.rows
-        .map((r) => {
-          const d = r.debitAnswer ? `${r.debitAnswer} ${r.debitAmount.toLocaleString()}` : "―";
-          const c = r.creditAnswer ? `${r.creditAnswer} ${r.creditAmount.toLocaleString()}` : "―";
-          return `${d} ／ ${c}`;
-        })
-        .join("、");
+    case "journalBlank": {
+      // 空欄にした側だけを示す（もう一方は問題に表示されている）
+      const side = q.blankSide === "debit" ? "借方" : "貸方";
+      const answers = q.rows.map((r) => (q.blankSide === "debit" ? r.debitAnswer : r.creditAnswer)).filter((a): a is string => Boolean(a));
+      return `${side}：${answers.join("、")}`;
+    }
     case "tableBlank":
     case "ledgerAccount":
       return bankSlots(q)
