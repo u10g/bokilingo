@@ -10,7 +10,7 @@ import type {
   TableCell,
   TwoChoiceQuestion,
 } from "../../domain/types.ts";
-import { cellOrder, inventoryRows, inventorySummary, returnNote, txLine, type InvCol, type InvMethod, type InvSection, type InvTx } from "../../domain/inventory.ts";
+import { bookLines, bookNames, cellOrder, inventoryRows, inventorySummary, returnNote, txLine, type InvCol, type InvMethod, type InvSection, type InvTx } from "../../domain/inventory.ts";
 
 export { inventoryRows, type InvMethod, type InvTx } from "../../domain/inventory.ts";
 
@@ -148,6 +148,7 @@ export function il(
   blanks: InvBlank[],
   distractors: string[],
   explanation: string,
+  partners?: Record<string, string>, // 指定すると、取引を仕入帳・売上帳の形で示す（日付 → 相手先）
 ): BankEntry {
   const rows = inventoryRows(method, txs);
   const blankAt = new Map<string, InvCol[]>();
@@ -175,18 +176,36 @@ export function il(
   if (answers.length !== blanks.length) throw new Error(`${id}: 同じセルを2回空欄に指定している`);
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
 
-  const prompt = [`次の${item}に関する取引にもとづいて、${method}によって商品有高帳に記入する。`, ...returnNote(txs), ...txs.map(txLine)].join("\n");
+  const prompt = (
+    partners
+      ? [`次の${item}に関する${bookNames(txs)}にもとづいて、${method}によって商品有高帳に記入する。`, ...bookLines(txs, partners)]
+      : [`次の${item}に関する取引にもとづいて、${method}によって商品有高帳に記入する。`, ...returnNote(txs), ...txs.map(txLine)]
+  ).join("\n");
   const entry = tb(topicId, id, prompt, `商品有高帳（${method}）${item}`, INV_COLUMNS, tableRows, [...answers, ...distractors], explanation);
   (entry.question as TableBlankQuestion).order = order;
   return entry;
 }
 
 // 同じ取引の一覧から、当月の売上高・売上原価・売上総利益を求める問題
-export function ilSummary(topicId: string, id: string, method: InvMethod, item: string, txs: InvTx[], distractors: string[], explanation: string): BankEntry {
+export function ilSummary(
+  topicId: string,
+  id: string,
+  method: InvMethod,
+  item: string,
+  txs: InvTx[],
+  distractors: string[],
+  explanation: string,
+  partners?: Record<string, string>,
+): BankEntry {
   const { sales, cost } = inventorySummary(method, txs);
   const answers = [yen(sales), yen(cost), yen(sales - cost)];
   for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
-  const prompt = [`次の${item}に関する取引にもとづいて、${method}によった場合の当月の売上高・売上原価・売上総利益を求める。`, ...returnNote(txs), ...txs.map(txLine)].join("\n");
+  const lead = `${method}によった場合の当月の売上高・売上原価・売上総利益を求める。`;
+  const prompt = (
+    partners
+      ? [`次の${item}に関する${bookNames(txs)}にもとづいて、${lead}`, ...bookLines(txs, partners)]
+      : [`次の${item}に関する取引にもとづいて、${lead}`, ...returnNote(txs), ...txs.map(txLine)]
+  ).join("\n");
   return tb(topicId, id, prompt, "売上総利益の計算", ["項目", "金額"], [
     ["売上高", blank(answers[0])],
     ["売上原価", blank(answers[1])],
