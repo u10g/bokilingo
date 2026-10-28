@@ -65,7 +65,7 @@ RULES: dict[str, tuple[list[tuple[str, int]], list[str]]] = {
 OLD_SCOPE = re.compile(r"分記法|有価証券|為替手形|裏書|手形.{0,4}割引|売上割引|仕入割引")
 
 # 第2問・第3問の形式としての論点。第1問の出題数の表では、0件でも行を出さない
-FORMAT_TOPICS = {"subledger", "inventory-ledger", "statements", "worksheet", "ledger-entry", "fs-preparation"}
+FORMAT_TOPICS = {"subledger", "inventory-ledger", "fixed-asset-register", "statements", "worksheet", "ledger-entry", "fs-preparation"}
 
 MIN_SCORE = 4  # これ未満は「候補なし」
 MIN_MARGIN = 2  # 1位と2位の差がこれ未満なら「要確認」

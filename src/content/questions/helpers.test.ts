@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { tableSlots } from "../../domain/questions.ts";
 import { ledgerSlots } from "../../domain/questions.ts";
 import type { LedgerAccountQuestion, TableBlankQuestion } from "../../domain/types.ts";
-import { il, ilSummary, inventoryRows, la, ws, wsAfter, type InvTx } from "./helpers.ts";
+import { far, faValues, il, ilSummary, inventoryRows, la, ws, wsAfter, type InvTx } from "./helpers.ts";
 
 describe("精算表のヘルパー", () => {
   it("整理後は 試算表 ＋ 同じ側の修正 − 反対側の修正", () => {
@@ -177,3 +177,26 @@ describe("商品有高帳のヘルパー", () => {
     expect(tableSlots(q).map((x) => x.answer)).toEqual(["7,500", "2,800", "4,700"]);
   });
 });
+
+describe("固定資産台帳のヘルパー", () => {
+  it("期首までの月数・当期の月数（期中取得は月割）から金額を計算する", () => {
+    expect(faValues(5, { name: "A", acquired: [2, 4], life: 5, cost: 600000 })).toEqual({ acc: 360000, dep: 120000, book: 120000 });
+    expect(faValues(5, { name: "B", acquired: [3, 10], life: 6, cost: 1200000 })).toEqual({ acc: 300000, dep: 200000, book: 700000 });
+    expect(faValues(5, { name: "C", acquired: [5, 7], life: 4, cost: 480000 })).toEqual({ acc: 0, dep: 90000, book: 390000 });
+    expect(faValues(8, { name: "D", acquired: [6, 1], life: 5, cost: 1500000 })).toEqual({ acc: 675000, dep: 300000, book: 525000 });
+  });
+
+  it("割り切れない金額・当期より後の取得・耐用年数を過ぎた資産はエラーにする", () => {
+    expect(() => faValues(5, { name: "x", acquired: [2, 4], life: 7, cost: 100000 })).toThrow();
+    expect(() => faValues(5, { name: "x", acquired: [6, 4], life: 5, cost: 600000 })).toThrow();
+    expect(() => faValues(5, { name: "x", acquired: [1, 4], life: 3, cost: 600000 })).toThrow();
+  });
+
+  it("空欄は資産ごとに、期首累計額 → 当期の償却費 → 期末帳簿価額の順に入力する", () => {
+    const assets = [{ name: "A", acquired: [2, 4] as [number, number], life: 5, cost: 600000 }];
+    const q = far("t", "x", 5, assets, [[0, "book"], [0, "acc"]], ["1"], "").question as TableBlankQuestion;
+    expect(tableSlots(q).map((x) => x.answer)).toEqual(["360,000", "120,000"]);
+    expect(q.prompt.split("\n")[1]).toBe("なお、減価償却は残存価額ゼロの定額法により行い、期中に取得したものは月割で計算する。");
+  });
+});
+

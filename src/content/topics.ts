@@ -42,6 +42,7 @@ const list: TopicDef[] = [
   { id: "slips", title: "伝票", desc: "入金伝票・出金伝票・振替伝票の3伝票制です。" },
   { id: "subledger", title: "補助簿", desc: "取引を記入する補助簿の選び方です。" },
   { id: "inventory-ledger", title: "商品有高帳", desc: "移動平均法・先入先出法による記入です。" },
+  { id: "fixed-asset-register", title: "固定資産台帳", desc: "資産ごとの期首累計額・当期の減価償却費・帳簿価額です。" },
   { id: "statements", title: "財務諸表のしくみ", desc: "貸借対照表・損益計算書と、利益の計算です。" },
   { id: "worksheet", title: "精算表", desc: "決算整理事項ごとに、修正記入と整理後の金額を求めます。" },
   { id: "ledger-entry", title: "勘定記入", desc: "勘定に日付・摘要・金額を記入し、締め切ります。" },

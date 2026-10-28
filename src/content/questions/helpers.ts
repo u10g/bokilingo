@@ -195,6 +195,86 @@ export function ilSummary(topicId: string, id: string, method: InvMethod, item: 
 }
 
 /* ---------------------------------------------------------
+   固定資産台帳の問題
+   減価償却は残存価額ゼロの定額法、期中に取得したものは月割。金額はヘルパーが計算する。
+   本試験の台帳（取得年月日・名称・耐用年数・取得原価・期首減価償却累計額・当期減価償却費・期末帳簿価額）は
+   スマホに収まらないため、行と列を入れ替えて資産ごとに1列にする。
+--------------------------------------------------------- */
+
+export interface FaAsset {
+  name: string;
+  acquired: [year: number, month: number]; // ×年・月（1日に取得）
+  life: number; // 耐用年数
+  cost: number; // 取得原価
+}
+// 期首減価償却累計額・当期減価償却費・期末帳簿価額
+export type FaField = "acc" | "dep" | "book";
+export type FaBlank = [asset: number, field: FaField];
+
+const FA_ROWS = ["取得年月日", "耐用年数", "取得原価", "期首減価償却累計額", "当期減価償却費", "期末帳簿価額"] as const;
+const FA_FIELD_ROW: Record<FaField, number> = { acc: 3, dep: 4, book: 5 };
+
+// 会計期間の月の通し番号（4月始まり）。×5年4月 → 5*12+0、×6年3月 → 5*12+11
+const fiscalMonth = (year: number, month: number) => (month >= 4 ? year * 12 + (month - 4) : (year - 1) * 12 + (month + 8));
+
+// period は当期の期首の年（×5年4月1日〜×6年3月31日なら 5）
+export function faValues(period: number, a: FaAsset): Record<FaField, number> {
+  if (a.cost % a.life !== 0) throw new Error(`${a.name}: 1年分の減価償却費 ${a.cost}÷${a.life} が割り切れない`);
+  const annual = a.cost / a.life;
+  const start = period * 12; // 当期の期首（4月）
+  const got = fiscalMonth(...a.acquired);
+  if (got > start + 11) throw new Error(`${a.name}: 当期より後に取得している`);
+  const before = Math.max(0, start - got); // 期首までに使った月数
+  const during = Math.min(12, start + 12 - Math.max(got, start)); // 当期に使った月数
+  if ((annual * before) % 12 !== 0 || (annual * during) % 12 !== 0) throw new Error(`${a.name}: 月割の金額が割り切れない`);
+  const acc = (annual * before) / 12;
+  const dep = (annual * during) / 12;
+  if (acc + dep > a.cost) throw new Error(`${a.name}: 耐用年数を過ぎている`);
+  return { acc, dep, book: a.cost - acc - dep };
+}
+
+export function far(
+  topicId: string,
+  id: string,
+  period: number,
+  assets: FaAsset[],
+  blanks: FaBlank[],
+  distractors: string[],
+  explanation: string,
+): BankEntry {
+  const values = assets.map((a) => faValues(period, a));
+  const isBlank = (ai: number, f: FaField) => blanks.some(([i, g]) => i === ai && g === f);
+  const answers: string[] = [];
+  const rows: TableCell[][] = FA_ROWS.map((label, ri) => [
+    label,
+    ...assets.map((a, ai): TableCell => {
+      if (ri === 0) return `×${a.acquired[0]}年${a.acquired[1]}月1日`;
+      if (ri === 1) return `${a.life}年`;
+      if (ri === 2) return yen(a.cost);
+      const f = (Object.keys(FA_FIELD_ROW) as FaField[]).find((k) => FA_FIELD_ROW[k] === ri)!;
+      const v = yen(values[ai][f]) || "0";
+      if (!isBlank(ai, f)) return v;
+      return blank(v);
+    }),
+  ]);
+  // 入力の順番：資産ごとに、期首累計額 → 当期の償却費 → 期末帳簿価額（帳簿価額は前の2つから求める）
+  const order = [...blanks]
+    .sort(([a1, f1], [a2, f2]) => a1 - a2 || FA_FIELD_ROW[f1] - FA_FIELD_ROW[f2])
+    .map(([ai, f]) => {
+      answers.push(yen(values[ai][f]) || "0");
+      return `r${FA_FIELD_ROW[f]}c${ai + 1}`;
+    });
+  for (const d of distractors) if (answers.includes(d)) throw new Error(`${id}: ダミーの選択肢 ${d} が正解と重なっている`);
+  const prompt = [
+    `当社（決算年1回 3月31日）の当期（×${period}年4月1日〜×${period + 1}年3月31日）の固定資産台帳は、次のとおりである。空欄にあてはまる金額を答える。`,
+    "なお、減価償却は残存価額ゼロの定額法により行い、期中に取得したものは月割で計算する。",
+  ].join("\n");
+  const entry = tb(topicId, id, prompt, `固定資産台帳（×${period + 1}年3月31日）`, ["", ...assets.map((a) => a.name)], rows, [...answers, ...distractors], explanation);
+  (entry.question as TableBlankQuestion).order = order;
+  return entry;
+}
+
+/* ---------------------------------------------------------
    勘定記入（T勘定）の問題
    借方合計と貸方合計が一致しない勘定は作れない（締め切れないため）。
    blanks は空欄にするセルのキー：d0n（借方1行目の摘要）、c1a（貸方2行目の金額）、t（合計）

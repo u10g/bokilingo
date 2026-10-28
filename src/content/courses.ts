@@ -27,7 +27,7 @@ const TAC: CourseDef = {
     { id: "s4", title: "CHAPTER 05", subtitle: "有形固定資産", bg: "bg-amber-600", sub: "text-amber-100", topicIds: ["fixed-assets"] },
     { id: "s5", title: "CHAPTER 06 前半", subtitle: "その他の取引（債権債務・仮勘定・給料・賃借）", bg: "bg-violet-500", sub: "text-violet-100", topicIds: ["loans", "suspense", "payroll", "rent"] },
     { id: "s6", title: "CHAPTER 06 後半", subtitle: "その他の取引（収益・費用・消費税・株式・訂正）", bg: "bg-orange-500", sub: "text-orange-100", topicIds: ["services", "expenses", "consumption-tax", "equity", "correction"] },
-    { id: "s-ch07", title: "CHAPTER 07", subtitle: "帳簿", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["subledger", "inventory-ledger"] },
+    { id: "s-ch07", title: "CHAPTER 07", subtitle: "帳簿", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["subledger", "inventory-ledger", "fixed-asset-register"] },
     { id: "s-ch09", title: "CHAPTER 09", subtitle: "伝票と仕訳日計表", bg: "bg-cyan-600", sub: "text-cyan-100", topicIds: ["slips"] },
     { id: "s-ch10", title: "CHAPTER 10", subtitle: "決算手続I（精算表）", bg: "bg-lime-600", sub: "text-lime-100", topicIds: ["worksheet"] },
     { id: "s7", title: "CHAPTER 11 前半", subtitle: "決算手続II（振替・貸倒引当金）", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts-amount", "bad-debts-refill", "bad-debts-entry", "bad-debts-writeoff", "bad-debts-recovery"] },
@@ -55,7 +55,7 @@ const EXAM: CourseDef = {
     { id: "e7", title: "第2問・第3問 2", subtitle: "減価償却", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["depreciation-amount", "depreciation-monthly", "depreciation-entry", "depreciation-sale", "depreciation-midyear"] },
     { id: "e7b", title: "第2問・第3問 3", subtitle: "経過勘定", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["accruals-type", "accruals-account", "accruals-months", "accruals-entry", "accruals-reversal"] },
     { id: "e9", title: "第3問 決算", subtitle: "精算表と財務諸表の作成", bg: "bg-lime-600", sub: "text-lime-100", topicIds: ["worksheet", "fs-preparation"] },
-    { id: "e8", title: "第2問 帳簿と財務諸表", subtitle: "勘定記入・補助簿・商品有高帳・財務諸表", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["ledger-entry", "subledger", "inventory-ledger", "statements"] },
+    { id: "e8", title: "第2問 帳簿と財務諸表", subtitle: "勘定記入・補助簿・商品有高帳・固定資産台帳・財務諸表", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["ledger-entry", "subledger", "inventory-ledger", "fixed-asset-register", "statements"] },
   ],
 };
 
