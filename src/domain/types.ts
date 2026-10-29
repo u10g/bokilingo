@@ -1,3 +1,4 @@
+import type { FaAsset, FaField } from "./fixedAssets.ts";
 import type { InvCol, InvMethod, InvSection, InvTx } from "./inventory.ts";
 
 /* ---------------------------------------------------------
@@ -166,6 +167,13 @@ export interface StoryInventory {
 // 商品有高帳のストーリーで空欄にするセル：[欄, 列, そのステップの同じ欄の何行目か]
 export type StoryInvCell = [section: InvSection, col: InvCol, nth?: number];
 
+// 固定資産台帳のストーリー。assets[i] がステップ i で台帳に記入する資産（取得の古い順）
+export interface StoryFixedAssets {
+  period: number; // 当期の期首の年（×5年4月1日〜×6年3月31日なら 5）
+  kind: string; // 資産の勘定科目（例：備品）。最後に求める減価償却累計額の科目名に使う
+  assets: FaAsset[];
+}
+
 // 修正記入（＝決算整理仕訳）の1行
 export interface StoryEntry {
   account: string;
@@ -177,6 +185,7 @@ export interface StoryStep {
   item: string; // 決算整理事項・取引（1行）
   date?: string; // 勘定記入（ledger）で、T勘定の日付欄に出す日付（例：4/1）
   cells?: StoryInvCell[]; // 商品有高帳（inventory）で空欄にするセル
+  faCells?: FaField[]; // 固定資産台帳（fixedAssets）で空欄にする行
   entries: StoryEntry[];
   distractors: string[];
   explanation: string;
@@ -190,15 +199,17 @@ export interface Story {
   // statements は財務諸表（金額が変わった表示科目の行を埋める。lines が必要）、
   // ledger は勘定記入（1つの勘定に、取引ごとの摘要と金額を記入して締め切る。ledger が必要）、
   // inventory は商品有高帳（取引ごとに受入・払出・残高を記入し、最後に売上総利益を求める。inventory が必要）
-  table: "worksheet" | "adjustedTb" | "statements" | "ledger" | "inventory";
+  // fixedAssets は固定資産台帳（資産ごとに期首累計額・当期の償却費・帳簿価額を記入し、最後に合計を求める。fixedAssets が必要）
+  table: "worksheet" | "adjustedTb" | "statements" | "ledger" | "inventory" | "fixedAssets";
   lines?: StoryLine[];
   ledger?: StoryLedger;
   inventory?: StoryInventory;
+  fixedAssets?: StoryFixedAssets;
   title: string;
   intro: string;
   accounts: StoryAccount[];
   steps: StoryStep[];
-  finale: { distractors: string[]; explanation: string }; // 最後に当期純利益（勘定記入は締切、商品有高帳は売上総利益）を求める
+  finale: { distractors: string[]; explanation: string }; // 最後に当期純利益（勘定記入は締切、商品有高帳は売上総利益、固定資産台帳は減価償却費と累計額の合計）を求める
 }
 
 export type NodeKind = "classify" | "drill" | "journal" | "table" | "story" | "review";

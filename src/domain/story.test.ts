@@ -179,3 +179,51 @@ describe("商品有高帳のストーリー", () => {
   });
 });
 
+
+describe("固定資産台帳のストーリー", () => {
+  const story: Story = {
+    id: "t-fa",
+    topicId: "t",
+    table: "fixedAssets",
+    title: "",
+    intro: "",
+    accounts: [],
+    fixedAssets: {
+      period: 5,
+      kind: "備品",
+      assets: [
+        { name: "A", acquired: [3, 4], life: 5, cost: 500 * 12 },
+        { name: "B", acquired: [5, 10], life: 4, cost: 400 * 12 },
+      ],
+    },
+    steps: [
+      { item: "", entries: [], faCells: ["book", "acc"], distractors: ["1", "2"], explanation: "" },
+      { item: "", entries: [], faCells: ["acc", "dep"], distractors: ["1", "2"], explanation: "" },
+    ],
+    finale: { distractors: ["1", "2"], explanation: "" },
+  };
+
+  it("空欄は、そのステップの資産の指定した行。期首累計額 → 当期減価償却費 → 帳簿価額の順に並ぶ", () => {
+    expect(stepSlots(story, 0).map((s) => [s.key, s.answer])).toEqual([
+      ["fa:0:acc", "2,400"],
+      ["fa:0:book", "2,400"],
+    ]);
+    // 当期に取得した資産の期首累計額は0
+    expect(stepSlots(story, 1).map((s) => s.answer)).toEqual(["0", "600"]);
+  });
+
+  it("最後は当期の減価償却費の合計と、期末の減価償却累計額の合計", () => {
+    expect(stepSlots(story, 2).map((s) => [s.account, s.answer])).toEqual([
+      ["減価償却費（当期）", "1,800"],
+      ["備品減価償却累計額（期末）", "4,200"],
+    ]);
+    expect(validateStory(story)).toEqual([]);
+  });
+
+  it("資産とステップの数のずれや、計算できない資産を見つける", () => {
+    const bad: Story = { ...story, steps: [story.steps[0]] };
+    expect(validateStory(bad).some((e) => e.includes("合わない"))).toBe(true);
+    const late: Story = { ...story, fixedAssets: { ...story.fixedAssets!, assets: [story.fixedAssets!.assets[0], { name: "C", acquired: [6, 4], life: 5, cost: 6000 }] } };
+    expect(validateStory(late).some((e) => e.includes("当期より後"))).toBe(true);
+  });
+});
