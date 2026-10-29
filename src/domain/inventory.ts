@@ -103,11 +103,51 @@ export const txLine = (tx: InvTx) => {
 };
 
 // 返品があるときは、本試験と同じく記入する欄を「なお、」で指示する
-export const returnNote = (txs: InvTx[]) => {
+const returnParts = (txs: InvTx[]) => {
   const kinds = new Set(txs.map((t) => t[1]));
-  const parts = [kinds.has("仕入戻し") && "仕入戻しは払出欄", kinds.has("売上戻り") && "売上戻りは受入欄"].filter(Boolean);
+  return [kinds.has("仕入戻し") && "仕入戻しは払出欄", kinds.has("売上戻り") && "売上戻りは受入欄"].filter((x): x is string => Boolean(x));
+};
+export const returnNote = (txs: InvTx[]) => {
+  const parts = returnParts(txs);
   return parts.length ? [`なお、${parts.join("に、")}に記入する。`] : [];
 };
+
+/* 仕入帳・売上帳から読み取る形（第8回）
+   取引を日付順の一覧ではなく、仕入帳と売上帳に分けて示す。受験者は2つの帳簿を日付順に合わせて商品有高帳に記入する。
+   partners は日付 → 相手先。前月繰越は帳簿に載らないので「なお、」で示す。 */
+// 問題文の書き出しに使う帳簿の名前（取引のある帳簿だけ）
+export function bookNames(txs: InvTx[]): string {
+  const names = [
+    txs.some((t) => t[1] === "仕入" || t[1] === "仕入戻し") && "仕入帳",
+    txs.some((t) => t[1] === "売上" || t[1] === "売上戻り") && "売上帳",
+  ].filter(Boolean);
+  return names.join("と");
+}
+
+export function bookLines(txs: InvTx[], partners: Record<string, string>): string[] {
+  const opening = txs[0];
+  if (opening?.[1] !== "前月繰越") throw new Error("最初の取引が前月繰越でない");
+  const line = (tx: InvTx) => {
+    const [date, kind, qty] = tx;
+    const partner = partners[date];
+    if (!partner) throw new Error(`${date} の相手先がない`);
+    const price = tx[1] === "仕入戻し" ? refTx(txs, tx[3], "仕入")[3] : tx[1] === "売上戻り" ? refTx(txs, tx[3], "売上")[3] : (tx[3] as number);
+    const returned = kind === "仕入戻し" || kind === "売上戻り";
+    return `${jpDate(date)} ${partner} 掛${returned ? "返品" : ""} ${qty}個 @¥${yen(price)} ¥${yen(qty * price)}`;
+  };
+  const parts = returnParts(txs);
+  const head = `前月繰越は${opening[2]}個 @¥${yen(opening[3] as number)}`;
+  // 取引のない帳簿は見出しも出さない（空欄の日付までに取引を縮めたとき）
+  const book = (title: string, kinds: InvTx[1][]) => {
+    const lines = txs.filter((t) => kinds.includes(t[1])).map(line);
+    return lines.length ? [title, ...lines] : [];
+  };
+  return [
+    parts.length ? `なお、${head}であり、${parts.join("に、")}に記入する。` : `なお、${head}である。`,
+    ...book("【仕入帳】", ["仕入", "仕入戻し"]),
+    ...book("【売上帳】", ["売上", "売上戻り"]),
+  ];
+}
 
 // 入力の順番。移動平均法で仕入れた・返品した後の残高は、数量と金額を足し引きしてから単価を割り出す
 export function cellOrder(method: InvMethod, r: InvRow): InvCol[] {
