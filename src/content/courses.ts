@@ -33,7 +33,7 @@ const TAC: CourseDef = {
     { id: "s7", title: "CHAPTER 11 前半", subtitle: "決算手続II（振替・貸倒引当金）", bg: "bg-rose-500", sub: "text-rose-100", topicIds: ["closing", "bad-debts-amount", "bad-debts-refill", "bad-debts-entry", "bad-debts-writeoff", "bad-debts-recovery"] },
     { id: "s7d", title: "CHAPTER 11 中盤", subtitle: "決算手続II（減価償却）", bg: "bg-red-500", sub: "text-red-100", topicIds: ["depreciation-amount", "depreciation-monthly", "depreciation-entry", "depreciation-sale", "depreciation-midyear"] },
     { id: "s8", title: "CHAPTER 11 後半", subtitle: "決算手続II（経過勘定・法人税等）", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["accruals-type", "accruals-account", "accruals-months", "accruals-entry", "accruals-reversal", "corporate-tax"] },
-    { id: "s-ch12", title: "CHAPTER 12", subtitle: "決算手続III（財務諸表・勘定の締め切り）", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["statements", "fs-preparation", "ledger-entry"] },
+    { id: "s-ch12", title: "CHAPTER 12", subtitle: "決算手続III（財務諸表・勘定の締め切り）", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["statements", "fs-preparation", "ledger-entry", "terms"] },
   ],
 };
 
@@ -55,7 +55,7 @@ const EXAM: CourseDef = {
     { id: "e7", title: "第2問・第3問 2", subtitle: "減価償却", bg: "bg-slate-600", sub: "text-slate-200", topicIds: ["depreciation-amount", "depreciation-monthly", "depreciation-entry", "depreciation-sale", "depreciation-midyear"] },
     { id: "e7b", title: "第2問・第3問 3", subtitle: "経過勘定", bg: "bg-fuchsia-500", sub: "text-fuchsia-100", topicIds: ["accruals-type", "accruals-account", "accruals-months", "accruals-entry", "accruals-reversal"] },
     { id: "e9", title: "第3問 決算", subtitle: "精算表と財務諸表の作成", bg: "bg-lime-600", sub: "text-lime-100", topicIds: ["worksheet", "fs-preparation"] },
-    { id: "e8", title: "第2問 帳簿と財務諸表", subtitle: "勘定記入・補助簿・商品有高帳・固定資産台帳・財務諸表", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["ledger-entry", "subledger", "inventory-ledger", "fixed-asset-register", "statements"] },
+    { id: "e8", title: "第2問 帳簿と財務諸表", subtitle: "勘定記入・補助簿・商品有高帳・固定資産台帳・財務諸表・用語", bg: "bg-teal-500", sub: "text-teal-100", topicIds: ["ledger-entry", "subledger", "inventory-ledger", "fixed-asset-register", "statements", "terms"] },
   ],
 };
 

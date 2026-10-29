@@ -47,6 +47,7 @@ const list: TopicDef[] = [
   { id: "worksheet", title: "精算表", desc: "決算整理事項ごとに、修正記入と整理後の金額を求めます。" },
   { id: "ledger-entry", title: "勘定記入", desc: "勘定に日付・摘要・金額を記入し、締め切ります。" },
   { id: "fs-preparation", title: "財務諸表の作成", desc: "決算整理後の金額を、貸借対照表・損益計算書に表示します。" },
+  { id: "terms", title: "簿記の用語", desc: "帳簿・伝票・決算の用語を、文の空欄に入れます。" },
 ];
 
 export const TOPICS: Record<string, TopicDef> = Object.fromEntries(list.map((t) => [t.id, t]));
