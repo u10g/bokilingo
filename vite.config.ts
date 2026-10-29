@@ -35,7 +35,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"],
+        // アイコン（includeAssets・manifest の icons）と manifest はプラグインが保存リストに加えるので、ここではコードだけを集める
+        globPatterns: ["**/*.{js,css,html}"],
         navigateFallback: `${BASE}index.html`,
       },
     }),
