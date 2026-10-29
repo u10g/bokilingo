@@ -11,6 +11,7 @@ import type {
   TwoChoiceQuestion,
 } from "../../domain/types.ts";
 import { bookLines, bookNames, cellOrder, inventoryRows, inventorySummary, returnNote, txLine, type InvCol, type InvMethod, type InvSection, type InvTx } from "../../domain/inventory.ts";
+import { FA_FIELD_ROW, FA_ROWS, faAcquiredLabel, faValues, type FaAsset, type FaField } from "../../domain/fixedAssets.ts";
 
 export { inventoryRows, type InvMethod, type InvTx } from "../../domain/inventory.ts";
 
@@ -220,37 +221,8 @@ export function ilSummary(
    スマホに収まらないため、行と列を入れ替えて資産ごとに1列にする。
 --------------------------------------------------------- */
 
-export interface FaAsset {
-  name: string;
-  acquired: [year: number, month: number]; // ×年・月（1日に取得）
-  life: number; // 耐用年数
-  cost: number; // 取得原価
-}
-// 期首減価償却累計額・当期減価償却費・期末帳簿価額
-export type FaField = "acc" | "dep" | "book";
+export { faValues, type FaAsset, type FaField };
 export type FaBlank = [asset: number, field: FaField];
-
-const FA_ROWS = ["取得年月日", "耐用年数", "取得原価", "期首減価償却累計額", "当期減価償却費", "期末帳簿価額"] as const;
-const FA_FIELD_ROW: Record<FaField, number> = { acc: 3, dep: 4, book: 5 };
-
-// 会計期間の月の通し番号（4月始まり）。×5年4月 → 5*12+0、×6年3月 → 5*12+11
-const fiscalMonth = (year: number, month: number) => (month >= 4 ? year * 12 + (month - 4) : (year - 1) * 12 + (month + 8));
-
-// period は当期の期首の年（×5年4月1日〜×6年3月31日なら 5）
-export function faValues(period: number, a: FaAsset): Record<FaField, number> {
-  if (a.cost % a.life !== 0) throw new Error(`${a.name}: 1年分の減価償却費 ${a.cost}÷${a.life} が割り切れない`);
-  const annual = a.cost / a.life;
-  const start = period * 12; // 当期の期首（4月）
-  const got = fiscalMonth(...a.acquired);
-  if (got > start + 11) throw new Error(`${a.name}: 当期より後に取得している`);
-  const before = Math.max(0, start - got); // 期首までに使った月数
-  const during = Math.min(12, start + 12 - Math.max(got, start)); // 当期に使った月数
-  if ((annual * before) % 12 !== 0 || (annual * during) % 12 !== 0) throw new Error(`${a.name}: 月割の金額が割り切れない`);
-  const acc = (annual * before) / 12;
-  const dep = (annual * during) / 12;
-  if (acc + dep > a.cost) throw new Error(`${a.name}: 耐用年数を過ぎている`);
-  return { acc, dep, book: a.cost - acc - dep };
-}
 
 export function far(
   topicId: string,
@@ -267,7 +239,7 @@ export function far(
   const rows: TableCell[][] = FA_ROWS.map((label, ri) => [
     label,
     ...assets.map((a, ai): TableCell => {
-      if (ri === 0) return `×${a.acquired[0]}年${a.acquired[1]}月1日`;
+      if (ri === 0) return faAcquiredLabel(a);
       if (ri === 1) return `${a.life}年`;
       if (ri === 2) return yen(a.cost);
       const f = (Object.keys(FA_FIELD_ROW) as FaField[]).find((k) => FA_FIELD_ROW[k] === ri)!;

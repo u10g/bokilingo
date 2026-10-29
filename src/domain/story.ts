@@ -1,3 +1,4 @@
+import { FA_FIELDS, faValues } from "./fixedAssets.ts";
 import { cellOrder, inventoryRows, inventorySummary, type InvRow } from "./inventory.ts";
 import type { Story, StoryAccount, StoryLine } from "./types.ts";
 
@@ -197,9 +198,44 @@ function inventorySlots(story: Story, stepIndex: number): StorySlot[] {
     );
 }
 
+/* ---------------------------------------------------------
+   固定資産台帳（fixedAssets）
+   ステップ i で、資産 assets[i] の列（期首減価償却累計額・当期減価償却費・期末帳簿価額）を記入する。
+   空欄はステップごとに faCells で指定する。最後に、当期の減価償却費の合計と、期末の減価償却累計額の合計を求める。
+   この2つは、本試験で台帳のあとに問われる減価償却費勘定と減価償却累計額勘定の金額になる。
+--------------------------------------------------------- */
+
+export const faCellKey = (asset: number, field: string) => `fa:${asset}:${field}`;
+export const FA_SUM_DEP = "fa:sum:dep";
+export const FA_SUM_ACC = "fa:sum:acc";
+
+// 最後に求める2つの金額と、その行の名前
+export function faTotals(story: Story): { key: string; label: string; amount: number }[] {
+  const fa = story.fixedAssets;
+  if (!fa) return [];
+  const values = fa.assets.map((a) => faValues(fa.period, a));
+  return [
+    { key: FA_SUM_DEP, label: "減価償却費（当期）", amount: values.reduce((t, v) => t + v.dep, 0) },
+    { key: FA_SUM_ACC, label: `${fa.kind}減価償却累計額（期末）`, amount: values.reduce((t, v) => t + v.acc + v.dep, 0) },
+  ];
+}
+
+function fixedAssetSlots(story: Story, stepIndex: number): StorySlot[] {
+  const fa = story.fixedAssets;
+  if (!fa) return [];
+  if (stepIndex === story.steps.length) return faTotals(story).map((x) => ({ key: x.key, account: x.label, col: "after" as const, answer: amountLabel(x.amount) }));
+  const asset = fa.assets[stepIndex];
+  if (!asset) return [];
+  const values = faValues(fa.period, asset);
+  const cells = story.steps[stepIndex]?.faCells ?? [];
+  // 期首に累計額がない（当期に取得した）ときは「0」と書く
+  return FA_FIELDS.filter((f) => cells.includes(f)).map((f) => ({ key: faCellKey(stepIndex, f), account: `fa:${stepIndex}`, col: "after" as const, answer: amountLabel(values[f]) }));
+}
+
 // ステップの空欄。最後のステップ（steps.length）は当期純利益
 export function stepSlots(story: Story, stepIndex: number): StorySlot[] {
   if (story.table === "inventory") return inventorySlots(story, stepIndex);
+  if (story.table === "fixedAssets") return fixedAssetSlots(story, stepIndex);
   if (story.table === "ledger") {
     if (stepIndex === story.steps.length) {
       const c = ledgerClosing(story);
@@ -254,6 +290,7 @@ export function stepChoices(story: Story, stepIndex: number): string[] {
 export function validateStory(story: Story): string[] {
   if (story.table === "ledger") return validateLedger(story);
   if (story.table === "inventory") return validateInventory(story);
+  if (story.table === "fixedAssets") return validateFixedAssets(story);
   const errors: string[] = [];
   const accounts = new Map(story.accounts.map((a) => [a.account, a]));
   if (accounts.size !== story.accounts.length) errors.push("科目が重複している");
@@ -386,6 +423,33 @@ function validateInventory(story: Story): string[] {
     if (slots.length === 0) errors.push(`${label}: 空欄がない`);
     if (new Set(slots.map((x) => x.key)).size !== slots.length) errors.push(`${label}: 同じセルを2回空欄にしている`);
     const answers = slots.map((x) => x.answer);
+    const distractors = i === story.steps.length ? story.finale.distractors : story.steps[i].distractors;
+    for (const d of distractors) if (answers.includes(d)) errors.push(`${label}: ダミーの選択肢 ${d} が正解と重なっている`);
+    if (distractors.length < 2) errors.push(`${label}: ダミーの選択肢が2つ未満`);
+  }
+  return errors;
+}
+
+// 固定資産台帳のストーリーの検証：資産の数とステップの数、台帳の計算（割り切れるか・耐用年数内か）、空欄の指定
+function validateFixedAssets(story: Story): string[] {
+  const fa = story.fixedAssets;
+  if (!fa) return ["固定資産台帳のストーリーに fixedAssets がない"];
+  const errors: string[] = [];
+  if (fa.assets.length !== story.steps.length) errors.push(`資産 ${fa.assets.length} 件とステップ ${story.steps.length} 件が合わない`);
+  for (const a of fa.assets) {
+    try {
+      faValues(fa.period, a);
+    } catch (e) {
+      errors.push(`台帳が計算できない：${(e as Error).message}`);
+    }
+  }
+  if (errors.length) return errors;
+  for (let i = 0; i <= story.steps.length; i++) {
+    const label = `ステップ${i + 1}`;
+    const cells = story.steps[i]?.faCells ?? [];
+    if (new Set(cells).size !== cells.length) errors.push(`${label}: 同じ行を2回空欄にしている`);
+    const answers = stepSlots(story, i).map((x) => x.answer);
+    if (answers.length === 0) errors.push(`${label}: 空欄がない`);
     const distractors = i === story.steps.length ? story.finale.distractors : story.steps[i].distractors;
     for (const d of distractors) if (answers.includes(d)) errors.push(`${label}: ダミーの選択肢 ${d} が正解と重なっている`);
     if (distractors.length < 2) errors.push(`${label}: ダミーの選択肢が2つ未満`);

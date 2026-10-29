@@ -12,7 +12,7 @@ describe("ストーリーのデータ", () => {
   it.each(STORIES.map((s) => [s.id, s] as const))("%s: 金額と選択肢に矛盾がない", (_, s) => {
     expect(TOPICS[s.topicId], s.topicId).toBeDefined();
     expect(validateStory(s)).toEqual([]);
-    if (s.table !== "ledger" && s.table !== "inventory") expect(netIncome(s)).toBeGreaterThan(0);
+    if (s.table !== "ledger" && s.table !== "inventory" && s.table !== "fixedAssets") expect(netIncome(s)).toBeGreaterThan(0);
   });
 
   // 最後のステップの解説に書いた金額（収益・費用・当期純利益）が、計算と一致する
@@ -48,6 +48,19 @@ describe("ストーリーのデータ", () => {
       ["9,900", "25", "30"],
       ["25", "10", "3,300", "6,600"],
       ["33,200", "20,500", "12,700"],
+    ]],
+    // 固定資産台帳：資産ごとに期首累計額・当期減価償却費・期末帳簿価額、最後に減価償却費と累計額の合計
+    ["story-fa-1", [
+      ["480,000", "120,000", "360,000"],
+      ["270,000", "180,000", "450,000"],
+      ["0", "40,000", "440,000"],
+      ["340,000", "1,090,000"],
+    ]],
+    ["story-fa-2", [
+      ["1,200,000", "300,000", "600,000"],
+      ["630,000", "360,000", "450,000"],
+      ["0", "140,000", "1,060,000"],
+      ["800,000", "2,630,000"],
     ]],
   ] as const)("%s: 各ステップの正解", (id, expected) => {
     const s = STORIES.find((x) => x.id === id)!;

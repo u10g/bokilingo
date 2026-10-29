@@ -92,6 +92,16 @@ function lessonsForTopic(courseId: string, sectionId: string, topic: TopicDef, e
   });
 }
 
+// ストーリーで1つずつ読むもの
+const STORY_ITEM: Record<Story["table"], string> = {
+  worksheet: "決算整理事項",
+  adjustedTb: "決算整理事項",
+  statements: "決算整理事項",
+  ledger: "取引",
+  inventory: "取引",
+  fixedAssets: "資産",
+};
+
 // ストーリーは1レッスンで表を1枚完成させる。問題バンクの問題は使わない
 function storyNode(courseId: string, sectionId: string, topic: TopicDef, story: Story): LessonNode {
   return {
@@ -100,7 +110,7 @@ function storyNode(courseId: string, sectionId: string, topic: TopicDef, story: 
     kind: "story",
     chapter: sectionId,
     unit: topic.title,
-    desc: `決算整理事項を1つずつ読みながら、表を最後まで完成させます（${story.steps.length}ステップ）。`,
+    desc: `${STORY_ITEM[story.table]}を1つずつ読みながら、表を最後まで完成させます（${story.steps.length}ステップ）。`,
     questions: [],
     story,
   };

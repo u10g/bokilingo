@@ -18,6 +18,8 @@ import {
   NET_KEY,
   NET_LABEL,
   SUMMARY_KEYS,
+  faCellKey,
+  faTotals,
   TOTAL_KEY,
   stepChoices,
   stepSlots,
@@ -27,6 +29,7 @@ import {
   type LineSection,
   type StorySlot,
 } from "../domain/story.ts";
+import { FA_FIELD_ROW, FA_ROWS, faAcquiredLabel, faValues, type FaField } from "../domain/fixedAssets.ts";
 import type { Answer, JournalBlankAnswer, LessonResult, Story, StoryAccount, StoryLine } from "../domain/types.ts";
 
 /* ---------------------------------------------------------
@@ -102,6 +105,7 @@ const READ_BUTTON: Record<Story["table"], string> = {
   statements: "財務諸表に反映する",
   ledger: "勘定に記入する",
   inventory: "帳簿に記入する",
+  fixedAssets: "台帳に記入する",
 };
 const FILL_HINT: Record<Story["table"], string> = {
   worksheet: "空欄に金額",
@@ -109,6 +113,7 @@ const FILL_HINT: Record<Story["table"], string> = {
   statements: "金額が変わった行に新しい金額",
   ledger: "摘要と金額",
   inventory: "数量・単価・金額",
+  fixedAssets: "金額",
 };
 const FINALE_TEXT: Record<Story["table"], string> = {
   worksheet: "すべての決算整理が終わりました。整理後の金額から、当期純利益を求めましょう。",
@@ -116,6 +121,7 @@ const FINALE_TEXT: Record<Story["table"], string> = {
   statements: "すべての決算整理が終わりました。損益計算書から当期純利益を求め、それを加えた繰越利益剰余金を求めましょう。",
   ledger: "すべての取引を記入しました。最後に、勘定を締め切りましょう。",
   inventory: "今月の取引をすべて記入しました。最後に、売上高・売上原価・売上総利益を求めましょう。",
+  fixedAssets: "すべての資産を台帳に記入しました。最後に、当期の減価償却費と、期末の減価償却累計額を求めましょう。",
 };
 const FINALE_BUTTON: Record<Story["table"], string> = {
   worksheet: "当期純利益を求める",
@@ -123,6 +129,7 @@ const FINALE_BUTTON: Record<Story["table"], string> = {
   statements: "当期純利益を求める",
   ledger: "締め切る",
   inventory: "売上総利益を求める",
+  fixedAssets: "合計を求める",
 };
 
 function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext: (missed: boolean) => void }) {
@@ -164,8 +171,8 @@ function StoryStep({ story, step, onNext }: { story: Story; step: number; onNext
 
   const statements = story.table === "statements";
   const ledger = story.table === "ledger";
-  // 勘定記入・商品有高帳は表が1つなので、行をしぼる切り替えはない
-  const singleBook = ledger || story.table === "inventory";
+  // 勘定記入・商品有高帳・固定資産台帳は表が1つなので、行をしぼる切り替えはない
+  const singleBook = ledger || story.table === "inventory" || story.table === "fixedAssets";
   // 勘定に関係しない取引（勘定記入のひっかけ）は空欄がない。読んだら、記入しないことを解説で確かめる
   const nothingToFill = !isIntro && slots.length === 0;
   const text = isIntro ? story.intro : isFinale ? FINALE_TEXT[story.table] : story.steps[step].item;
@@ -326,6 +333,9 @@ function StoryTable({ story, step, phase, focus, slots, wrongKeys, bank }: Table
 
   if (story.table === "inventory") {
     return <InventoryStoryTable story={story} step={step} phase={phase} slotKeys={slotKeys} slotCell={slotCell} />;
+  }
+  if (story.table === "fixedAssets") {
+    return <FixedAssetStoryTable story={story} step={step} phase={phase} slotKeys={slotKeys} slotCell={slotCell} />;
   }
   if (story.table === "ledger") {
     return <LedgerStoryTable story={story} step={step} phase={phase} slotKeys={slotKeys} slotCell={slotCell} />;
@@ -743,6 +753,87 @@ function InventoryStoryTable({
             <div key={k.key} className="flex items-center border-t first:border-t-0 border-gray-100 px-3 py-1.5">
               <span className="flex-1 text-sm font-bold text-gray-700">{k.label}</span>
               <span className="w-32 text-right text-sm font-extrabold tabular-nums">{slotCell(k.key)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   固定資産台帳（行と列を入れ替え、資産ごとに1列）
+   前のステップまでの資産は記入済み。いまの資産の列は、読んでいる間は問題文にある項目（取得年月日・耐用年数・取得原価）だけを出し、
+   穴埋めに入ったら計算する行を空欄で出す。最後に、減価償却費と減価償却累計額の合計の表を出す。
+--------------------------------------------------------- */
+
+function FixedAssetStoryTable({
+  story,
+  step,
+  phase,
+  slotKeys,
+  slotCell,
+}: {
+  story: Story;
+  step: number;
+  phase: Phase;
+  slotKeys: Set<string>;
+  slotCell: (key: string) => ReactNode;
+}) {
+  const fa = story.fixedAssets!;
+  const isFinale = step === story.steps.length;
+  const assets = fa.assets.slice(0, isFinale ? fa.assets.length : Math.max(0, step + 1));
+  const reading = (ai: number) => ai === step && phase === "read";
+  const value = (ai: number, ri: number): ReactNode => {
+    const a = assets[ai];
+    if (ri === 0) return faAcquiredLabel(a);
+    if (ri === 1) return `${a.life}年`;
+    if (ri === 2) return amountLabel(a.cost);
+    if (reading(ai)) return "";
+    const f = (Object.keys(FA_FIELD_ROW) as FaField[]).find((k) => FA_FIELD_ROW[k] === ri)!;
+    const key = faCellKey(ai, f);
+    return slotKeys.has(key) ? slotCell(key) : amountLabel(faValues(fa.period, a)[f]);
+  };
+  if (assets.length === 0) return null;
+
+  return (
+    <div>
+      <p className="text-xs font-extrabold text-gray-400 mb-1">
+        固定資産台帳（×{fa.period + 1}年3月31日）
+      </p>
+      <div className="rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full table-fixed text-xs">
+          <thead className="bg-gray-50 text-gray-500">
+            <tr>
+              <th className="w-[30%] px-1 py-1.5" />
+              {assets.map((a, ai) => (
+                <th key={ai} className={`px-1 py-1.5 font-extrabold ${ai === step ? "text-sky-600" : ""}`}>
+                  {a.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {FA_ROWS.map((label, ri) => (
+              <tr key={label} className="border-t border-gray-100">
+                <td className="px-1.5 py-1.5 font-bold text-gray-500 leading-tight">{label}</td>
+                {assets.map((_, ai) => (
+                  <td key={ai} className={`px-1 py-1 text-center font-extrabold text-gray-800 tabular-nums ${ai === step ? "bg-sky-50" : ""}`}>
+                    {value(ai, ri)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {isFinale && phase !== "read" && (
+        <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+          {faTotals(story).map((x) => (
+            <div key={x.key} className="flex items-center border-t first:border-t-0 border-gray-100 px-3 py-1.5">
+              <span className="flex-1 text-sm font-bold text-gray-700">{x.label}</span>
+              <span className="w-32 text-right text-sm font-extrabold tabular-nums">{slotCell(x.key)}</span>
             </div>
           ))}
         </div>
