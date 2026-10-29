@@ -9,6 +9,7 @@ import { PREVIEW_QUESTIONS } from "./questions/preview.ts";
 import { FREQUENT_QUESTIONS } from "./questions/frequent.ts";
 import { LEDGER_ENTRY_QUESTIONS } from "./questions/ledgerEntries.ts";
 import { NEW_TOPIC_QUESTIONS } from "./questions/newTopics.ts";
+import { TERM_QUESTIONS } from "./questions/terms.ts";
 import { TOPICS } from "./topics.ts";
 
 /* ---------------------------------------------------------
@@ -116,7 +117,7 @@ function build(): BankEntry[] {
   return entries;
 }
 
-export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS, ...LEDGER_ENTRY_QUESTIONS, ...ELEMENT_QUESTIONS, ...PREVIEW_QUESTIONS, ...FIXED_ASSET_REGISTER_QUESTIONS];
+export const BANK: BankEntry[] = [...build(), ...FREQUENT_QUESTIONS, ...NEW_TOPIC_QUESTIONS, ...CLOSING_STATEMENT_QUESTIONS, ...LEDGER_ENTRY_QUESTIONS, ...ELEMENT_QUESTIONS, ...PREVIEW_QUESTIONS, ...FIXED_ASSET_REGISTER_QUESTIONS, ...TERM_QUESTIONS];
 
 export const QUESTION_BY_ID: Map<string, Question> = new Map(BANK.map((e) => [e.question.id, e.question]));
 
